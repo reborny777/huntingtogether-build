@@ -1,75 +1,140 @@
-// Hunting Together Build Board — app logic.
-// Runs on Supabase when config.js has keys, otherwise in demo mode (local sample data).
+// Hunting Together Build Board — app logic (v2: drag-and-drop builder on real game data).
+// Game rules and icons come from game-data.js (exported from the game). Data lives in Supabase.
 {
 'use strict';
 const CFG = window.HT_CONFIG || {};
+const G = window.HT_GAME;
 const SUPA_CDN = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js';
+const ICON_BASE = (CFG.SUPABASE_URL || 'https://pjzzrpwfftoplfbpbjgz.supabase.co') + '/storage/v1/object/public/icons/';
+const icon = id => id ? ICON_BASE + id + '.png' : '';
 
-// ---------- game data (edit here if the game changes) ----------
-const CLASSES = [
-  {k:'Swordsman',c:'#d8644f'},{k:'Thief',c:'#9b6bd6'},{k:'Archer',c:'#5ea957'},{k:'Mage',c:'#4f8fd8'},
-  {k:'Cleric',c:'#d6a93c'},{k:'Merchant',c:'#c98243'},{k:'Alchemist',c:'#3fae98'},{k:'Samurai',c:'#d65577'},
-  {k:'Necromancer',c:'#7a6fb0'},{k:'Muay Thai',c:'#c0392b'}];
+// ---------- game data helpers ----------
 const STATS = ['STR','AGI','VIT','INT','DEX','LUK'];
 const SLOTS = ['Weapon','Helm','Mask','Armor','Cloak','Boots','Ring'];
-const TIERS = [{k:'I',c:'#c4c4c4'},{k:'II',c:'#71d46b'},{k:'III',c:'#5aa9ff'},{k:'IV',c:'#c07cff'},{k:'V',c:'#ffa040'},{k:'VI',c:'#ff5a52'}];
-const CARD_RAR = [{k:'Normal',c:'#c4c4c4'},{k:'Leader',c:'#71d46b'},{k:'Mini Boss',c:'#c07cff'},{k:'Boss',c:'#ffd257'},{k:'Red',c:'#ff5a52'}];
-const OPT_STATS = ['STR','AGI','VIT','INT','DEX','LUK','HP','SP','DEF','MDEF','Evasion',
-  'Crit Rate','ATK %','MATK %','DEF Pen','MDEF Pen','ASPD','Cast Speed','Cooldown (CDR)','DMG Reduction',
-  'Max HP %','Max SP %','DEF %','SP Cost','Potion Heal','Move Speed','HP Regen','SP Regen','Lifesteal','SP Leech'];
+const SLOT_LAYOUT = ['Helm','Mask','Weapon','Armor','Ring','Cloak','Boots'];
+const BAR_SIZE = 9, MAX_TAGS = 6, PAGE = 24;
 const TAGS = ['Solo','Party','Boss','Farming','AoE','Single Target','Tank','Support','Budget','Endgame'];
-const MAX_OPTS = 4, CARD_SLOTS = 8, MAX_TAGS = 6, PAGE = 24;
+const CLASSES = G ? G.classes.map(c => ({k:c.name, c:c.color, id:c.id})) : [];
+const CLS = G ? Object.fromEntries(G.classes.map(c => [c.name, c])) : {};
+const ITEM = G ? Object.fromEntries(G.items.map(i => [i.id, i])) : {};
+const CARD = G ? Object.fromEntries(G.cards.map(c => [c.id, c])) : {};
+const RAR_COLOR = {grey:'#9aa0ad', green:'#4cbf4f', blue:'#3d8ee6', purple:'#9b5de5', gold:'#e8a81e', red:'#e0483e'};
+const RAR_ORDER = ['red','gold','purple','blue','green','grey'];
+const RAR_NAME = {grey:'Normal', green:'Leader', blue:'Rare', purple:'Mini Boss', gold:'Boss', red:'Legendary'};
+const CUM = [0]; if (G) for (let v = 1; v < G.maxStat; v++) CUM[v] = CUM[v - 1] + (G.upCost[v - 1] || 0);
+const costTo = v => CUM[Math.max(1, Math.min(G.maxStat, v)) - 1] || 0;
+const totalPts = lv => G.totalPoints[Math.max(1, Math.min(G.maxLevel, lv)) - 1] || 0;
+const skillPts = lv => Math.min(lv, G.skillPointCap);
+const tierColor = t => (G.tiers[t - 1] || G.tiers[0]).color;
+const roman = t => (G.tiers[t - 1] || {}).roman || '';
+const rarBg = t => icon(G.rarityBg[String(t - 1)]);
+const clsColor = name => (CLS[name] || {color:'#888'}).color;
+function label(key, v){
+  const tpl = G.labels[key] || (key + ' +{v}');
+  return tpl.replace('{v10}', String(Math.round(v) / 10)).replace('{v}', String(v));
+}
+const labelName = key => (G.labels[key] || key).replace(/\s*[+\-]\{v(10)?\}.*$/, '');
+function optRange(item, key, special){
+  const tr = item.tier;
+  if (tr === 6) return special ? ((G.ranges.t6special[item.g6] || {})[key] || null) : (G.ranges.t6random[key] || null);
+  if (special) { const r = G.ranges.special[key]; return r ? r[tr - 1] : null; }
+  const r = G.ranges.line[key] || G.ranges.stat; return r ? r[tr - 1] : null;
+}
+const clampN = (v, lo, hi) => Math.max(lo, Math.min(hi, Math.round(Number(v) || 0)));
+function itemsFor(slot, cls){
+  return G.items.filter(i => i.slot === slot && (slot !== 'Weapon' || (i.jobs || []).includes(cls && cls.id)));
+}
+function newEntry(item){
+  const e = {id:item.id, refine:0, main:item.max, sp:null, lines:[]};
+  if (item.specials.length) { const k = item.specials[0], r = optRange(item, k, true); if (r) e.sp = {k, v:r[1]}; }
+  for (const k of item.pool) { if (e.lines.length >= item.lines) break; const r = optRange(item, k, false); if (r) e.lines.push({k, v:r[1]}); }
+  return e;
+}
+function cleanEntry(e){
+  const item = e && ITEM[e.id]; if (!item) return null;
+  const out = {id:item.id, refine:clampN(e.refine, 0, G.refineMax), main:clampN(e.main == null ? item.max : e.main, item.min, item.max), sp:null, lines:[]};
+  if (e.sp && item.specials.includes(e.sp.k)) { const r = optRange(item, e.sp.k, true); if (r) out.sp = {k:e.sp.k, v:clampN(e.sp.v, r[0], r[1])}; }
+  const seen = new Set();
+  for (const l of (e.lines || [])) {
+    if (out.lines.length >= item.lines || !l || !item.pool.includes(l.k) || seen.has(l.k)) continue;
+    const r = optRange(item, l.k, false); if (!r) continue;
+    seen.add(l.k); out.lines.push({k:l.k, v:clampN(l.v, r[0], r[1])});
+  }
+  return out;
+}
+function autoStats(cls, lv){
+  const w = cls.weights || {}; const st = Object.fromEntries(STATS.map(k => [k, 1]));
+  let pts = totalPts(lv);
+  for (let n = 0; n < 5000; n++) {
+    let pick = null, best = Infinity;
+    for (const k of STATS) { const wt = w[k]; if (wt > 0 && st[k] < G.maxStat && G.upCost[st[k] - 1] <= pts) { const p = (st[k] - 1) / wt; if (p < best) { pick = k; best = p; } } }
+    if (!pick) break; pts -= G.upCost[st[pick] - 1]; st[pick]++;
+  }
+  return st;
+}
 
-// ---------- text (English always; Thai only for Thai-language devices in Thailand) ----------
+// ---------- text ----------
 const I18N = {
 en:{brandSub:'Build Board',browse:'Browse',share:'Share a build',heroTitle:'Find a build. Share yours.',
-heroSub:'Stats, gear, cards and the idea behind every build — free for every hunter.',
-demo:'Demo mode — sample builds, saved only on this device.',footer:'Community build board for Hunting Together RPG on Roblox.',
+heroSub:'Real gear, cards and skills from the game — drag them into a build and share it free with every hunter.',
+demo:'Demo mode — saved only on this device.',footer:'Community build board for Hunting Together RPG on Roblox. Item and skill data from the game.',
 search:'Search builds or players',all:'All classes',sort_new:'Newest',sort_likes:'Most liked',sort_rating:'Top rated',
 loadMore:'Load more',loading:'Loading builds…',empty:'No builds yet. Be the first to share one!',
 emptyFilter:'No builds match. Try another class or word.',errLoad:"Couldn't load builds. Check your connection and try again.",
 errConnect:"Couldn't connect to the build board. Please try again.",retry:'Try again',by:'by',ratings:'ratings',
 noRatings:'No ratings yet',yourRating:'Your rating',rateThis:'Rate this build',copyLink:'Copy link',copied:'Link copied!',
-report:'Report',edit:'Edit',del:'Delete',back:'Back to builds',stats:'Stats',concept:'Build idea',gear:'Equipment',cards:'Cards',
-emptySlot:'Empty',noCards:'No cards',notFound:"This build was removed or doesn't exist.",ownNote:'This is your build.',
-ownNoRate:"You can't like or rate your own build.",hiddenNote:'Hidden after reports — only you can see it.',sample:'Sample',
+report:'Report',edit:'Edit',del:'Delete',back:'Back to builds',stats:'Stats',concept:'Build idea',gear:'Equipment',cards:'Cards',skills:'Skills',
+emptySlot:'Empty',notFound:"This build was removed or doesn't exist.",ownNote:'This is your build.',
+ownNoRate:"You can't like or rate your own build.",hiddenNote:'Hidden after reports — only you can see it.',
 newTitle:'Share your build',editTitle:'Edit your build',basics:'Basics',fRoblox:'Roblox username',fTitle:'Build name',
-fTitlePh:'e.g. Crit Thief for bosses',fClass:'Class',pick:'Pick one',fLevel:'Level',statsHint:'Your stat points as shown in the Status window.',
-gearHint:"Leave a slot empty if you don't use it.",fItem:'Item name',fTier:'Tier',fRefine:'Refine',addOpt:'Add option',
-optStat:'Option',value:'Value',valuePh:'+5%',cardsHint:'Up to 8 cards.',fCard:'Card name',fConcept:'Explain your build',
-fConceptPh:'Why these stats? Which skills do you use? What does this build do best?',tagsHint:'Pick up to 6.',tags:'Playstyle',
+fTitlePh:'e.g. Crit Thief for bosses',fClass:'Class',pick:'Pick one',fLevel:'Level',
+fConcept:'Explain your build',fConceptPh:'Why these stats? Which skills do you use? What does this build do best?',tagsHint:'Pick up to 6.',tags:'Playstyle',
 save:'Publish build',saveEdit:'Save changes',cancel:'Cancel',saving:'Saving…',saved:'Build published!',savedEdit:'Changes saved!',
-draftNote:'Your draft is kept on this device.',clearForm:'Clear form',clearQ:'Clear the whole form?',clearMsg:'Everything you typed will be removed.',
+draftNote:'Your draft is kept on this device.',clearForm:'Clear form',clearQ:'Clear the whole form?',clearMsg:'Everything you set will be removed.',
 eRoblox:'Use 3–20 letters, numbers or _.',eTitle:'Give your build a name (3–60 characters).',eClass:'Pick a class.',
-eLevel:'Level must be a whole number from 1.',eStats:'Each stat must be a whole number from 1 to 999.',eFix:'Please fix the fields in red.',
-eSave:"Couldn't save. Please try again.",eLimit:"You've reached 10 builds. Delete one to share another.",eAction:'Something went wrong. Please try again.',
+eFix:'Please fix these first:',eSave:"Couldn't save. Please try again.",eLimit:"You've reached 10 builds. Delete one to share another.",eAction:'Something went wrong. Please try again.',
 delQ:'Delete this build?',delMsg:"This can't be undone.",deleted:'Build deleted.',repQ:'Report this build',
 repMsg:"Tell us what's wrong (rude words, fake info, spam).",repSend:'Send report',repDone:"Thanks! We'll check it.",
-repAlready:'You already reported this build.',close:'Close',ok:'OK',copyManual:'Copy this link:',maxTags:'You can pick up to 6.'},
+repAlready:'You already reported this build.',close:'Close',ok:'OK',copyManual:'Copy this link:',maxTags:'You can pick up to 6.',
+pickClassFirst:'Pick a class first to see its gear and skills.',character:'Character',bag:'Bag',dragHint:'Drag gear and cards onto your character — or tap to equip.',
+dragHintTouch:'Tap to equip. Hold and drag to move.',refine:'Refine',mainStat:'Base',special:'Special option',options:'Options',noSpecial:'No special option on Tier I',
+remove:'Remove',none:'None',needLv:'Needs Lv.',ptsLeft:'Points left',ptsOver:'Too many points used',
+autoStat:'Use game auto-stat',resetStats:'Reset',nextCost:'Next +1 costs',skillPts:'Skill points left',hotbar:'Skill bar',hotbarHint:'Drag skills here and drag to change the order. Tap a skill in the bar to remove it.',
+passive:'Passive',active:'Active',unlockAt:'Unlocks at Lv.',forClass:'For my class',allRarity:'All',searchCard:'Search cards',
+eStatPts:'Stat points are over the limit for this level.',eSkillPts:'Skill points are over the limit for this level.',
+eItemLv:'needs a higher level',eCardLock:'Card slot is locked at this level',eWeapon:'This weapon is not for this class',
+selectSlot:'Tap an equipped item to set its refine and options.',clsChange:'Change class? Your weapon and skills will be cleared.',change:'Change',
+lines:'lines',empty2:'Empty',ptsUsed:'pts used'},
 th:{brandSub:'บอร์ดบิลด์',browse:'ดูบิลด์',share:'แชร์บิลด์',heroTitle:'หาบิลด์เก่ง ๆ แชร์บิลด์ของคุณ',
-heroSub:'สเตตัส ไอเทม การ์ด และแนวคิดของทุกบิลด์ ดูได้ฟรีทุกคน',
-demo:'โหมดตัวอย่าง — บิลด์ตัวอย่าง บันทึกแค่ในเครื่องนี้',footer:'บอร์ดบิลด์ของผู้เล่น Hunting Together RPG บน Roblox',
+heroSub:'ไอเทม การ์ด และสกิลจริงจากเกม ลากใส่เป็นบิลด์แล้วแชร์ให้ทุกคนดูฟรี',
+demo:'โหมดตัวอย่าง — บันทึกแค่ในเครื่องนี้',footer:'บอร์ดบิลด์ของผู้เล่น Hunting Together RPG บน Roblox · ข้อมูลไอเทมและสกิลจากเกม',
 search:'ค้นหาบิลด์หรือชื่อผู้เล่น',all:'ทุกคลาส',sort_new:'ใหม่ล่าสุด',sort_likes:'ไลก์มากสุด',sort_rating:'คะแนนสูงสุด',
 loadMore:'โหลดเพิ่ม',loading:'กำลังโหลดบิลด์…',empty:'ยังไม่มีบิลด์ มาแชร์เป็นคนแรกกัน!',
 emptyFilter:'ไม่พบบิลด์ ลองคลาสหรือคำอื่น',errLoad:'โหลดบิลด์ไม่สำเร็จ เช็กอินเทอร์เน็ตแล้วลองใหม่',
 errConnect:'เชื่อมต่อบอร์ดบิลด์ไม่สำเร็จ ลองใหม่อีกครั้ง',retry:'ลองใหม่',by:'โดย',ratings:'คนให้คะแนน',
 noRatings:'ยังไม่มีคะแนน',yourRating:'คะแนนของคุณ',rateThis:'ให้คะแนนบิลด์นี้',copyLink:'คัดลอกลิงก์',copied:'คัดลอกลิงก์แล้ว!',
-report:'รายงาน',edit:'แก้ไข',del:'ลบ',back:'กลับไปหน้าบิลด์',stats:'สเตตัส',concept:'แนวคิดบิลด์',gear:'ไอเทมที่สวมใส่',cards:'การ์ด',
-emptySlot:'ว่าง',noCards:'ไม่ได้ใส่การ์ด',notFound:'ไม่พบบิลด์นี้ อาจถูกลบไปแล้ว',ownNote:'นี่คือบิลด์ของคุณ',
-ownNoRate:'ไลก์หรือให้คะแนนบิลด์ตัวเองไม่ได้',hiddenNote:'ถูกซ่อนเพราะมีคนรายงาน มีแค่คุณที่เห็น',sample:'ตัวอย่าง',
+report:'รายงาน',edit:'แก้ไข',del:'ลบ',back:'กลับไปหน้าบิลด์',stats:'สเตตัส',concept:'แนวคิดบิลด์',gear:'ไอเทมที่สวมใส่',cards:'การ์ด',skills:'สกิล',
+emptySlot:'ว่าง',notFound:'ไม่พบบิลด์นี้ อาจถูกลบไปแล้ว',ownNote:'นี่คือบิลด์ของคุณ',
+ownNoRate:'ไลก์หรือให้คะแนนบิลด์ตัวเองไม่ได้',hiddenNote:'ถูกซ่อนเพราะมีคนรายงาน มีแค่คุณที่เห็น',
 newTitle:'แชร์บิลด์ของคุณ',editTitle:'แก้ไขบิลด์',basics:'ข้อมูลหลัก',fRoblox:'ชื่อผู้ใช้ Roblox',fTitle:'ชื่อบิลด์',
-fTitlePh:'เช่น Thief คริติคอลตีบอส',fClass:'คลาส',pick:'เลือก',fLevel:'เลเวล',statsHint:'ใส่ค่าสเตตัสตามหน้าต่าง Status ในเกม',
-gearHint:'ช่องไหนไม่ได้ใส่ ปล่อยว่างได้',fItem:'ชื่อไอเทม',fTier:'ระดับ',fRefine:'ตีบวก',addOpt:'เพิ่มออปชัน',
-optStat:'ออปชัน',value:'ค่า',valuePh:'+5%',cardsHint:'ใส่การ์ดได้ 8 ใบ',fCard:'ชื่อการ์ด',fConcept:'อธิบายแนวคิดบิลด์',
-fConceptPh:'ทำไมอัปสเตตัสแบบนี้ ใช้สกิลอะไร บิลด์นี้เก่งเรื่องอะไร',tagsHint:'เลือกได้สูงสุด 6 อย่าง',tags:'สไตล์การเล่น',
+fTitlePh:'เช่น Thief คริติคอลตีบอส',fClass:'คลาส',pick:'เลือก',fLevel:'เลเวล',
+fConcept:'อธิบายแนวคิดบิลด์',fConceptPh:'ทำไมอัปสเตตัสแบบนี้ ใช้สกิลอะไร บิลด์นี้เก่งเรื่องอะไร',tagsHint:'เลือกได้สูงสุด 6 อย่าง',tags:'สไตล์การเล่น',
 save:'เผยแพร่บิลด์',saveEdit:'บันทึกการแก้ไข',cancel:'ยกเลิก',saving:'กำลังบันทึก…',saved:'เผยแพร่บิลด์แล้ว!',savedEdit:'บันทึกแล้ว!',
-draftNote:'ร่างจะถูกเก็บไว้ในเครื่องนี้',clearForm:'ล้างฟอร์ม',clearQ:'ล้างฟอร์มทั้งหมด?',clearMsg:'ข้อมูลที่พิมพ์ไว้จะหายทั้งหมด',
+draftNote:'ร่างจะถูกเก็บไว้ในเครื่องนี้',clearForm:'ล้างฟอร์ม',clearQ:'ล้างฟอร์มทั้งหมด?',clearMsg:'ทุกอย่างที่ตั้งไว้จะหายทั้งหมด',
 eRoblox:'ใช้ตัวอักษร ตัวเลข หรือ _ 3–20 ตัว',eTitle:'ตั้งชื่อบิลด์ 3–60 ตัวอักษร',eClass:'เลือกคลาส',
-eLevel:'เลเวลต้องเป็นจำนวนเต็มตั้งแต่ 1',eStats:'สเตตัสต้องเป็นจำนวนเต็ม 1–999',eFix:'กรุณาแก้ช่องที่เป็นสีแดง',
-eSave:'บันทึกไม่สำเร็จ ลองอีกครั้ง',eLimit:'คุณแชร์ครบ 10 บิลด์แล้ว ลบบิลด์เก่าก่อนถึงจะแชร์ใหม่ได้',eAction:'เกิดข้อผิดพลาด ลองอีกครั้ง',
+eFix:'แก้ตรงนี้ก่อนนะ:',eSave:'บันทึกไม่สำเร็จ ลองอีกครั้ง',eLimit:'คุณแชร์ครบ 10 บิลด์แล้ว ลบบิลด์เก่าก่อนถึงจะแชร์ใหม่ได้',eAction:'เกิดข้อผิดพลาด ลองอีกครั้ง',
 delQ:'ลบบิลด์นี้?',delMsg:'ลบแล้วกู้คืนไม่ได้',deleted:'ลบบิลด์แล้ว',repQ:'รายงานบิลด์นี้',
 repMsg:'บอกเราว่าผิดตรงไหน (คำหยาบ ข้อมูลปลอม สแปม)',repSend:'ส่งรายงาน',repDone:'ขอบคุณ! เราจะตรวจสอบ',
-repAlready:'คุณรายงานบิลด์นี้แล้ว',close:'ปิด',ok:'ตกลง',copyManual:'คัดลอกลิงก์นี้:',maxTags:'เลือกได้สูงสุด 6 อย่าง'}};
+repAlready:'คุณรายงานบิลด์นี้แล้ว',close:'ปิด',ok:'ตกลง',copyManual:'คัดลอกลิงก์นี้:',maxTags:'เลือกได้สูงสุด 6 อย่าง',
+pickClassFirst:'เลือกคลาสก่อน แล้วไอเทมกับสกิลของคลาสจะขึ้นมา',character:'ตัวละคร',bag:'กระเป๋า',dragHint:'ลากไอเทมและการ์ดใส่ตัวละคร หรือแตะเพื่อสวมใส่',
+dragHintTouch:'แตะเพื่อสวมใส่ · กดค้างแล้วลากเพื่อย้าย',refine:'ตีบวก',mainStat:'ค่าหลัก',special:'ออปชันพิเศษ',options:'ออปชัน',noSpecial:'Tier I ไม่มีออปชันพิเศษ',
+remove:'ถอดออก',none:'ไม่มี',needLv:'ต้อง Lv.',ptsLeft:'แต้มเหลือ',ptsOver:'ใช้แต้มเกิน',
+autoStat:'อัปแบบอัตโนมัติของเกม',resetStats:'รีเซ็ต',nextCost:'อัป +1 ต่อไปใช้',skillPts:'แต้มสกิลเหลือ',hotbar:'แถบสกิล',hotbarHint:'ลากสกิลมาวางที่นี่ และลากเพื่อสลับลำดับ แตะสกิลในแถบเพื่อเอาออก',
+passive:'ติดตัว',active:'กดใช้',unlockAt:'ปลดที่ Lv.',forClass:'ของคลาสฉัน',allRarity:'ทั้งหมด',searchCard:'ค้นหาการ์ด',
+eStatPts:'แต้มสเตตัสเกินที่เลเวลนี้มีให้',eSkillPts:'แต้มสกิลเกินที่เลเวลนี้มีให้',
+eItemLv:'เลเวลยังไม่ถึง',eCardLock:'ช่องการ์ดยังล็อกที่เลเวลนี้',eWeapon:'อาวุธนี้ไม่ใช่ของคลาสนี้',
+selectSlot:'แตะไอเทมที่สวมอยู่ เพื่อตั้งค่าตีบวกและออปชัน',clsChange:'เปลี่ยนคลาส? อาวุธและสกิลจะถูกล้าง',change:'เปลี่ยน',
+lines:'แถว',empty2:'ว่าง',ptsUsed:'แต้มที่ใช้'}};
 
 // ---------- helpers ----------
 const $ = (s, r = document) => r.querySelector(s);
@@ -83,33 +148,25 @@ const store = {
 };
 const newId = () => (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : 'd' + Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
 const clone = o => JSON.parse(JSON.stringify(o));
-const clsColor = k => (CLASSES.find(c => c.k === k) || {c:'#888'}).c;
-const tierColor = k => (TIERS.find(c => c.k === k) || TIERS[0]).c;
-const rarColor = k => (CARD_RAR.find(c => c.k === k) || CARD_RAR[0]).c;
 const avg = b => b.rating_count ? b.rating_sum / b.rating_count : 0;
-
 const thOK = (() => { try { return /^th/i.test(navigator.language || '') && Intl.DateTimeFormat().resolvedOptions().timeZone === 'Asia/Bangkok'; } catch (e) { return false; } })();
 let lang = thOK ? store.get('ht_lang', 'th') : 'en';
 const t = k => (I18N[lang] && I18N[lang][k]) || I18N.en[k] || k;
-
+const isTouch = () => !!(window.matchMedia && matchMedia('(hover: none)').matches);
 const HEART = '<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-7.5-4.6-9.6-9.2C.9 8.4 3 4.5 6.8 4.5c2.1 0 3.6 1.2 5.2 3 1.6-1.8 3.1-3 5.2-3 3.8 0 5.9 3.9 4.4 7.3C19.5 16.4 12 21 12 21z"/></svg>';
 const STAR = '<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5l2.9 6.1 6.6.8-4.9 4.6 1.3 6.6L12 17.3 6.1 20.6l1.3-6.6L2.5 9.4l6.6-.8z"/></svg>';
-
+const LOCK = '<svg class="lk" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 10V7a5 5 0 0 1 10 0v3h1.5A1.5 1.5 0 0 1 20 11.5v9A1.5 1.5 0 0 1 18.5 22h-13A1.5 1.5 0 0 1 4 20.5v-9A1.5 1.5 0 0 1 5.5 10H7zm2 0h6V7a3 3 0 0 0-6 0v3z"/></svg>';
 function ago(iso){
   try {
     const s = Math.max(0, (Date.now() - new Date(iso).getTime()) / 1000);
     const rtf = new Intl.RelativeTimeFormat(lang, {numeric:'auto'});
-    const steps = [[60,'second',1],[3600,'minute',60],[86400,'hour',3600],[2592000,'day',86400],[31536000,'month',2592000],[Infinity,'year',31536000]];
-    for (const [lim, unit, div] of steps) if (s < lim) return rtf.format(-Math.round(s / div), unit);
+    for (const [lim, unit, div] of [[60,'second',1],[3600,'minute',60],[86400,'hour',3600],[2592000,'day',86400],[31536000,'month',2592000],[Infinity,'year',31536000]]) if (s < lim) return rtf.format(-Math.round(s / div), unit);
   } catch (e) {}
   return '';
 }
 function starsView(a){
   const p = Math.max(0, Math.min(100, a / 5 * 100));
   return `<span class="sv" aria-label="${a ? a.toFixed(1) : 0} / 5">${STAR.repeat(5)}<span class="fill" style="width:${p}%">${STAR.repeat(5)}</span></span>`;
-}
-function itemName(it){
-  return `<span class="item" style="color:${tierColor(it.tier)}">${it.refine ? '+' + (it.refine | 0) + ' ' : ''}${esc(it.name)} ${esc(it.tier || '')}</span>`;
 }
 function toast(msg){
   const el = $('#toast'); el.textContent = msg; el.classList.add('show');
@@ -123,8 +180,6 @@ function loadScript(src){
     document.head.appendChild(s);
   });
 }
-
-// ---------- modal ----------
 function modal({title, body = '', okLabel, okClass = 'green', input = false, cancel = true}){
   return new Promise(resolve => {
     const m = $('#modal');
@@ -133,7 +188,7 @@ function modal({title, body = '', okLabel, okClass = 'green', input = false, can
       <div class="mbody">${body}${input ? '<textarea id="mIn" maxlength="300" style="min-height:100px"></textarea>' : ''}
       <div class="mfoot">${cancel ? `<button class="btn grey" data-m="no">${t('cancel')}</button>` : ''}<button class="btn ${okClass}" data-m="ok">${esc(okLabel || t('ok'))}</button></div></div></div>`;
     m.hidden = false;
-    const focusEl = input ? $('#mIn') : $('[data-m="ok"]', m); focusEl && focusEl.focus();
+    const f = input ? $('#mIn') : $('[data-m="ok"]', m); f && f.focus();
     const done = v => { m.hidden = true; m.innerHTML = ''; m.onclick = null; document.removeEventListener('keydown', onKey); resolve(v); };
     const onKey = e => { if (e.key === 'Escape') done(null); };
     document.addEventListener('keydown', onKey);
@@ -145,97 +200,59 @@ function modal({title, body = '', okLabel, okClass = 'green', input = false, can
   });
 }
 
-// ---------- data: demo ----------
-function samples(){
-  const d = h => new Date(Date.now() - h * 3600e3).toISOString();
-  const mk = o => Object.assign({id:newId(), user_id:'sample', _sample:true, hidden:false, tags:[], cards:[], gear:{}, like_count:0, rating_sum:0, rating_count:0}, o);
-  return [
-    mk({roblox_name:'NightFang_07', title:'Crit Thief for boss hunting', class:'Thief', level:92,
-      stats:{STR:60,AGI:120,VIT:20,INT:1,DEX:35,LUK:90},
-      concept:'Max AGI first for attack speed, then LUK for Crit Rate. STR only for base damage.\nOpen with Venom Dash so it chains on crit, then keep Cross Rend going. Use Fade when the boss winds up a big hit.',
-      gear:{Weapon:{name:'Dagger',tier:'V',refine:8,opts:[{s:'Crit Rate',v:'+6%'},{s:'AGI',v:'+5'},{s:'ATK',v:'+18'}]},
-        Head:{name:'Hunter Cap',tier:'IV',refine:4,opts:[{s:'DEF',v:'+12'}]},
-        Armor:{name:'Leather Armor',tier:'V',refine:6,opts:[{s:'Evasion',v:'+4%'},{s:'HP',v:'+220'}]},
-        Cape:{name:'Wind Cape',tier:'IV',refine:5,opts:[{s:'DMG Reduction',v:'+3%'}]},
-        Boots:{name:'Swift Boots',tier:'IV',refine:4,opts:[{s:'Move Speed',v:'+5%'}]},
-        Ring:{name:'ATK Ring',tier:'V',refine:3,opts:[{s:'Crit DMG',v:'+10%'}]}},
-      cards:[{name:'Wolf Leader',r:'Leader'},{name:'Bandit',r:'Normal'},{name:'Scorpion King',r:'Mini Boss'}],
-      tags:['Boss','Single Target','Solo'], like_count:48, rating_sum:203, rating_count:45, created_at:d(5)}),
-    mk({roblox_name:'StarlightMia', title:'AoE Mage farmer — clears a zone fast', class:'Mage', level:85,
-      stats:{STR:1,AGI:10,VIT:30,INT:120,DEX:90,LUK:1},
-      concept:'INT for damage, DEX for cast speed. Pull a big group, then cast your AoE skills in a row.\nKeep a little VIT so you survive when monsters reach you.',
-      gear:{Weapon:{name:'Oak Staff',tier:'V',refine:7,opts:[{s:'MATK %',v:'+8%'},{s:'INT',v:'+6'}]},
-        Armor:{name:'Mage Robe',tier:'IV',refine:5,opts:[{s:'MDEF',v:'+15'}]},
-        Boots:{name:'Cloth Boots',tier:'IV',refine:4,opts:[{s:'DMG Reduction',v:'+2%'}]},
-        Ring:{name:'MATK Ring',tier:'V',refine:4,opts:[{s:'Cast Speed',v:'+5%'}]}},
-      cards:[{name:'Fire Imp',r:'Normal'},{name:'Frost Leader',r:'Leader'}],
-      tags:['Farming','AoE','Solo'], like_count:35, rating_sum:150, rating_count:34, created_at:d(30)}),
-    mk({roblox_name:'HolyBun_TH', title:'Party Cleric that keeps everyone alive', class:'Cleric', level:78,
-      stats:{STR:1,AGI:1,VIT:80,INT:95,DEX:70,LUK:1},
-      concept:'Heals and buffs scale with INT. VIT so bosses cannot one-shot you, DEX so Second Dawn casts faster.\nStand behind the tank and keep Mending Light under the party.',
-      gear:{Weapon:{name:'Grimoire',tier:'IV',refine:6,opts:[{s:'INT',v:'+4'}]},
-        Armor:{name:'Priest Robe',tier:'IV',refine:5,opts:[{s:'HP',v:'+300'}]},
-        Cape:{name:'Holy Cape',tier:'III',refine:4,opts:[{s:'DMG Reduction',v:'+3%'}]}},
-      cards:[{name:'Slime',r:'Normal'}],
-      tags:['Party','Support','Boss'], like_count:22, rating_sum:92, rating_count:20, created_at:d(52)}),
-    mk({roblox_name:'IronWall99', title:'Unkillable Swordsman tank', class:'Swordsman', level:88,
-      stats:{STR:70,AGI:15,VIT:130,INT:1,DEX:20,LUK:1},
-      concept:'Highest HP in the party. Taunt the boss, use Stone Stance when the big hit comes, War Cry for the team.',
-      gear:{Weapon:{name:'Knight Sword',tier:'IV',refine:6,opts:[{s:'ATK',v:'+14'}]},
-        Head:{name:'Iron Helm',tier:'V',refine:6,opts:[{s:'DEF',v:'+20'}]},
-        Armor:{name:'Plate Armor',tier:'V',refine:7,opts:[{s:'HP',v:'+450'},{s:'DEF',v:'+25'}]},
-        Cape:{name:'Guard Cape',tier:'IV',refine:5,opts:[{s:'DMG Reduction',v:'+4%'}]},
-        Boots:{name:'Iron Boots',tier:'IV',refine:5,opts:[{s:'DMG Reduction',v:'+3%'}]}},
-      cards:[{name:'Stone Golem',r:'Mini Boss'},{name:'Turtle',r:'Normal'}],
-      tags:['Tank','Party','Boss'], like_count:17, rating_sum:62, rating_count:15, created_at:d(80)}),
-    mk({roblox_name:'CoinKing_', title:'Budget Merchant gold farmer', class:'Merchant', level:64,
-      stats:{STR:90,AGI:20,VIT:40,INT:1,DEX:10,LUK:55},
-      concept:'Cheap gear only. STR for damage, LUK for crits. Farm one zone with Whirl Axe and enjoy the extra Gold.',
-      gear:{Weapon:{name:'Iron Axe',tier:'III',refine:5,opts:[{s:'ATK',v:'+10'}]},
-        Armor:{name:'Traveler Vest',tier:'III',refine:4,opts:[]}},
-      tags:['Farming','Budget','Solo'], like_count:9, rating_sum:31, rating_count:8, created_at:d(120)})
-  ];
+// ---------- shared visuals ----------
+function itemTile(item, opts = {}){
+  const lock = opts.level != null && item.req > opts.level;
+  return `<div class="tile${lock ? ' lock' : ''}${opts.cls ? ' ' + opts.cls : ''}" style="--bg:url('${rarBg(item.tier)}');--tc:${tierColor(item.tier)}" ${opts.drag && !lock ? `data-drag="item:${item.id}"` : ''} title="${esc(item.name)}">
+    <img src="${icon(item.icon)}" alt="" draggable="false" loading="lazy" onerror="this.style.visibility='hidden'">
+    ${opts.refine ? `<b class="rf">+${opts.refine}</b>` : ''}<i class="tr">${roman(item.tier)}</i>
+    ${lock ? `<span class="need">Lv.${item.req}</span>` : ''}</div>`;
 }
+function cardBonusText(c){
+  return Object.entries(c.bonus || {}).filter(([k]) => G.labels[k]).map(([k, v]) => label(k, v)).join(' · ');
+}
+function cardLine(c){
+  if (c.ability) { const parts = c.ability.split('\n'); return c.cls ? parts[parts.length - 1] : parts[0]; }
+  return cardBonusText(c);
+}
+function cardTile(c, opts = {}){
+  return `<div class="ctile${opts.cls ? ' ' + opts.cls : ''}" style="--rc:${RAR_COLOR[c.r] || '#999'}" ${opts.drag ? `data-drag="card:${c.id}"` : ''} title="${esc(c.name + '\n' + cardBonusText(c) + (c.ability ? '\n' + c.ability : ''))}">
+    <span class="cn">${esc(c.name)}</span><span class="cb">${esc(cardLine(c))}</span></div>`;
+}
+function skillIcon(s, opts = {}){
+  return `<div class="sk${s.type === 'passive' ? ' pas' : ''}${opts.cls ? ' ' + opts.cls : ''}" ${opts.drag ? `data-drag="skill:${s.id}"` : ''} title="${esc(s.name)}">
+    <img src="${icon(s.icon)}" alt="" draggable="false" loading="lazy" onerror="this.style.visibility='hidden'">${opts.lv ? `<b class="slv">${opts.lv}</b>` : ''}</div>`;
+}
+function entryLines(e){
+  const out = [];
+  if (e.sp) out.push({sp:true, text:label(e.sp.k, e.sp.v)});
+  for (const l of e.lines || []) out.push({sp:false, text:label(l.k, l.v)});
+  return out;
+}
+
+// ---------- data: demo ----------
 function DemoAPI(){
-  const ME = 'demo-me', KEY = 'ht_demo_v1';
+  const ME = 'demo-me', KEY = 'ht_demo_v2';
   let db = store.get(KEY, null);
-  if (!db || !Array.isArray(db.builds)) { db = {builds:samples(), likes:{}, ratings:{}, reports:{}}; save(); }
+  if (!db || !Array.isArray(db.builds)) { db = {builds:[], likes:{}, ratings:{}, reports:{}}; save(); }
   function save(){ store.set(KEY, db); }
   const find = id => db.builds.find(b => b.id === id);
-  const sorters = {
-    new:(a, b) => String(b.created_at).localeCompare(String(a.created_at)),
-    likes:(a, b) => b.like_count - a.like_count || sorters.new(a, b),
-    rating:(a, b) => avg(b) - avg(a) || b.rating_count - a.rating_count
-  };
+  const sorters = {new:(a, b) => String(b.created_at).localeCompare(String(a.created_at)), likes:(a, b) => b.like_count - a.like_count, rating:(a, b) => avg(b) - avg(a)};
   return {
-    demo:true,
-    async me(){ return ME; },
+    demo:true, async me(){ return ME; },
     async list({cls, q, sort, offset}){
-      let a = db.builds.filter(b => !b.hidden || b.user_id === ME);
+      let a = db.builds.slice();
       if (cls) a = a.filter(b => b.class === cls);
       if (q) { const s = q.toLowerCase(); a = a.filter(b => (b.title + ' ' + b.roblox_name).toLowerCase().includes(s)); }
       return clone(a.sort(sorters[sort] || sorters.new).slice(offset, offset + PAGE));
     },
     async get(id){ const b = find(id); return b ? clone(b) : null; },
-    async create(p){
-      if (db.builds.filter(b => b.user_id === ME).length >= 10) throw new Error('build limit');
-      const n = Object.assign({}, p, {id:newId(), user_id:ME, like_count:0, rating_sum:0, rating_count:0, hidden:false, created_at:new Date().toISOString()});
-      db.builds.unshift(n); save(); return clone(n);
-    },
-    async update(id, p){ const b = find(id); if (!b || b.user_id !== ME) throw new Error('not yours'); Object.assign(b, p, {updated_at:new Date().toISOString()}); save(); return clone(b); },
+    async create(p){ if (db.builds.filter(b => b.user_id === ME).length >= 10) throw new Error('build limit'); const n = Object.assign({}, p, {id:newId(), user_id:ME, like_count:0, rating_sum:0, rating_count:0, hidden:false, created_at:new Date().toISOString()}); db.builds.unshift(n); save(); return clone(n); },
+    async update(id, p){ const b = find(id); if (!b || b.user_id !== ME) throw new Error('not yours'); Object.assign(b, p); save(); return clone(b); },
     async remove(id){ db.builds = db.builds.filter(b => !(b.id === id && b.user_id === ME)); save(); },
     async myState(){ return {likes:new Set(Object.keys(db.likes)), ratings:Object.assign({}, db.ratings), reports:new Set(Object.keys(db.reports))}; },
-    async toggleLike(id){
-      const b = find(id); if (!b) throw new Error('missing'); if (b.user_id === ME) throw new Error('own build');
-      if (db.likes[id]) { delete db.likes[id]; b.like_count = Math.max(0, b.like_count - 1); } else { db.likes[id] = 1; b.like_count++; }
-      save(); return {liked:!!db.likes[id], like_count:b.like_count};
-    },
-    async rate(id, s){
-      const b = find(id); if (!b) throw new Error('missing'); if (b.user_id === ME) throw new Error('own build');
-      const old = db.ratings[id];
-      if (old) b.rating_sum += s - old; else { b.rating_sum += s; b.rating_count++; }
-      db.ratings[id] = s; save(); return {rating_sum:b.rating_sum, rating_count:b.rating_count};
-    },
+    async toggleLike(id){ const b = find(id); if (!b) throw new Error('missing'); if (b.user_id === ME) throw new Error('own build'); if (db.likes[id]) { delete db.likes[id]; b.like_count--; } else { db.likes[id] = 1; b.like_count++; } save(); return {liked:!!db.likes[id], like_count:b.like_count}; },
+    async rate(id, s){ const b = find(id); if (!b) throw new Error('missing'); if (b.user_id === ME) throw new Error('own build'); const old = db.ratings[id]; if (old) b.rating_sum += s - old; else { b.rating_sum += s; b.rating_count++; } db.ratings[id] = s; save(); return {rating_sum:b.rating_sum, rating_count:b.rating_count}; },
     async report(id){ db.reports[id] = 1; save(); return true; }
   };
 }
@@ -243,15 +260,14 @@ function DemoAPI(){
 // ---------- data: Supabase ----------
 function SupaAPI(sb){
   let meId = null;
-  const FIELDS = 'id,user_id,roblox_name,title,class,level,stats,concept,gear,cards,tags,like_count,rating_sum,rating_count,rating_avg,hidden,created_at,updated_at';
+  const FIELDS = 'id,user_id,roblox_name,title,class,level,stats,concept,gear,cards,skills,tags,like_count,rating_sum,rating_count,rating_avg,hidden,created_at,updated_at';
   const chk = r => { if (r.error) throw r.error; return r.data; };
   async function me(force){
     if (meId) return meId;
     const {data} = await sb.auth.getSession();
     if (data && data.session) return (meId = data.session.user.id);
     if (!force) return null;
-    const r = await sb.auth.signInAnonymously();
-    if (r.error) throw r.error;
+    const r = await sb.auth.signInAnonymously(); if (r.error) throw r.error;
     return (meId = r.data.user.id);
   }
   return {
@@ -271,16 +287,10 @@ function SupaAPI(sb){
     async update(id, p){ await me(true); return chk(await sb.from('builds').update(p).eq('id', id).select(FIELDS).single()); },
     async remove(id){ await me(true); chk(await sb.from('builds').delete().eq('id', id)); },
     async myState(){
-      const id = await me(false);
-      const st = {likes:new Set(), ratings:{}, reports:new Set()};
+      const id = await me(false); const st = {likes:new Set(), ratings:{}, reports:new Set()};
       if (!id) return st;
-      const [l, r, p] = await Promise.all([
-        sb.from('likes').select('build_id').eq('user_id', id),
-        sb.from('ratings').select('build_id,stars').eq('user_id', id),
-        sb.from('reports').select('build_id').eq('user_id', id)]);
-      (l.data || []).forEach(x => st.likes.add(x.build_id));
-      (r.data || []).forEach(x => { st.ratings[x.build_id] = x.stars; });
-      (p.data || []).forEach(x => st.reports.add(x.build_id));
+      const [l, r, p] = await Promise.all([sb.from('likes').select('build_id').eq('user_id', id), sb.from('ratings').select('build_id,stars').eq('user_id', id), sb.from('reports').select('build_id').eq('user_id', id)]);
+      (l.data || []).forEach(x => st.likes.add(x.build_id)); (r.data || []).forEach(x => { st.ratings[x.build_id] = x.stars; }); (p.data || []).forEach(x => st.reports.add(x.build_id));
       return st;
     },
     async toggleLike(id){ await me(true); return chk(await sb.rpc('toggle_like', {p_build:id})); },
@@ -290,26 +300,27 @@ function SupaAPI(sb){
 }
 
 // ---------- state ----------
-const S = {api:null, me:null, mine:{likes:new Set(), ratings:{}, reports:new Set()},
-  filter:{cls:'', q:'', sort:'new'}, list:[], offset:0, more:false, loading:false, err:false, listKey:null,
-  cur:null, edit:null, view:'', scrollY:0, busy:{}};
+const S = {api:null, me:null, mine:{likes:new Set(), ratings:{}, reports:new Set()}, filter:{cls:'', q:'', sort:'new'}, list:[], offset:0, more:false,
+  loading:false, err:false, listKey:null, cur:null, edit:null, view:'', scrollY:0, busy:{}};
 const app = $('#app');
 const key = () => JSON.stringify(S.filter);
 const errMsg = e => String((e && (e.message || e.msg)) || '');
 
 // ---------- list ----------
+function gearMini(b){
+  const g = b.gear || {};
+  return `<div class="gmini">${SLOTS.map(s => { const e = g[s], it = e && ITEM[e.id]; return it ? itemTile(it, {cls:'xs', refine:e.refine}) : `<div class="tile xs nil"></div>`; }).join('')}</div>`;
+}
 function cardHTML(b){
-  const w = b.gear && b.gear.Weapon;
   const top = STATS.map(k => [k, +(b.stats && b.stats[k]) || 0]).sort((a, c) => c[1] - a[1]).slice(0, 3);
-  const mx = Math.max(1, ...top.map(x => x[1]));
-  const a = avg(b);
+  const mx = Math.max(1, ...top.map(x => x[1])), a = avg(b);
   return `<article class="bcard" style="--c:${clsColor(b.class)}">
     <a class="cover" href="#build-${esc(b.id)}" aria-label="${esc(b.title)}"></a>
-    <div class="bc-top"><span class="cls">${esc(b.class)}</span><span class="lv">Lv. ${b.level | 0}</span>${b._sample ? `<span class="samp">${t('sample')}</span>` : ''}</div>
+    <div class="bc-top"><span class="cls">${esc(b.class)}</span><span class="lv">Lv. ${b.level | 0}</span></div>
     <h3>${esc(b.title)}</h3>
     <div class="by">${t('by')} <b>${esc(b.roblox_name)}</b> · ${ago(b.created_at)}</div>
+    ${gearMini(b)}
     <div class="mini">${top.map(([k, v]) => `<div class="mrow"><span>${k}</span><i><b style="width:${v / mx * 100}%"></b></i><em>${v}</em></div>`).join('')}</div>
-    ${w && w.name ? `<div class="wpn">${itemName(w)}</div>` : ''}
     <div class="bc-foot">${likeBtn(b, 'sm')}${starsView(a)}<span class="rc">${b.rating_count ? a.toFixed(1) : '–'}</span></div>
   </article>`;
 }
@@ -322,10 +333,9 @@ function viewList(){
   app.innerHTML = `<div class="filters">
     <div class="searchrow"><input id="q" type="search" placeholder="${t('search')}" value="${esc(S.filter.q)}" autocomplete="off" maxlength="40" aria-label="${t('search')}">
       <div class="tabs">${['new','likes','rating'].map(k => `<button class="btn sm ${S.filter.sort === k ? 'orange' : 'grey'}" data-sort="${k}">${t('sort_' + k)}</button>`).join('')}</div></div>
-    <div class="chips scroll">${[{k:'', c:'#ddd'}, ...CLASSES].map(c => `<button class="chip${S.filter.cls === c.k ? ' on' : ''}" data-cls="${c.k}" style="--c:${c.c}">${c.k || t('all')}</button>`).join('')}</div>
+    <div class="chips scroll">${[{k:'', c:'#ddd'}, ...CLASSES].map(c => `<button class="chip${S.filter.cls === c.k ? ' on' : ''}" data-cls="${esc(c.k)}" style="--c:${c.c}">${esc(c.k || t('all'))}</button>`).join('')}</div>
   </div><div id="grid" class="grid"></div><div id="listFoot" class="listfoot"></div>`;
-  if (S.listKey === key() && S.list.length) { renderGrid(); requestAnimationFrame(() => scrollTo(0, S.scrollY)); }
-  else loadList(true);
+  if (S.listKey === key() && S.list.length) { renderGrid(); requestAnimationFrame(() => scrollTo(0, S.scrollY)); } else loadList(true);
 }
 let reqId = 0;
 async function loadList(reset){
@@ -356,25 +366,31 @@ async function viewDetail(id){
   $('#hero').hidden = true;
   let b = S.list.find(x => x.id === id) || (S.cur && S.cur.id === id ? S.cur : null);
   if (b) { S.cur = b; renderDetail(); } else app.innerHTML = `<p class="muted center" style="padding:40px 0">${t('loading')}</p>`;
-  try { const fresh = await S.api.get(id); b = fresh || null; }
+  try { b = (await S.api.get(id)) || null; }
   catch (e) { console.error(e); if (!b) { app.innerHTML = `<div class="empty"><p>${t('errLoad')}</p><button class="btn blue" data-act="reroute">${t('retry')}</button></div>`; return; } }
   if (location.hash !== '#build-' + id) return;
   if (!b) { app.innerHTML = `<div class="empty"><p>${t('notFound')}</p><a class="btn blue" href="#">${t('back')}</a></div>`; return; }
   S.cur = b; renderDetail();
 }
-function gearLi(slot, it){
-  if (!it || !it.name) return `<li class="g"><span class="slot">${slot}</span><span class="muted">${t('emptySlot')}</span></li>`;
-  const opts = (it.opts || []).filter(o => o && o.s);
-  return `<li class="g"><span class="slot">${slot}</span><div><div class="iname">${itemName(it)}</div>${opts.length ? `<ul class="opts">${opts.map(o => `<li>${esc(o.s)} <b>${esc(o.v)}</b></li>`).join('')}</ul>` : ''}</div></li>`;
+function gearRow(slot, e){
+  const it = e && ITEM[e.id];
+  if (!it) return `<li class="grow"><div class="tile nil"><i class="sn">${slot}</i></div><div class="gi"><span class="slot">${slot}</span><span class="muted">${t('emptySlot')}</span></div></li>`;
+  return `<li class="grow">${itemTile(it, {refine:e.refine})}<div class="gi"><span class="slot">${slot}</span>
+    <div class="iname" style="color:${tierColor(it.tier)}">${e.refine ? '+' + e.refine + ' ' : ''}${esc(it.name)}</div>
+    <div class="imain">${esc(it.main)} ${e.main}${it.half ? ` · ${esc(it.half)} ${Math.floor(e.main / 2)}` : ''}</div>
+    <ul class="opts">${entryLines(e).map(l => `<li class="${l.sp ? 'spl' : ''}">${esc(l.text)}</li>`).join('')}</ul></div></li>`;
 }
 function renderDetail(){
   const b = S.cur, mine = S.me && b.user_id === S.me, myR = S.mine.ratings[b.id] || 0, a = avg(b);
-  const mx = Math.max(150, ...STATS.map(k => +(b.stats && b.stats[k]) || 0));
-  const cards = (b.cards || []).filter(c => c && c.name);
+  const cls = CLS[b.class];
+  const cards = Array.isArray(b.cards) ? b.cards : [];
+  const sk = b.skills || {}, lvls = sk.lv || {}, bar = sk.bar || [];
+  const skills = cls ? cls.skills : [];
+  const used = STATS.reduce((s, k) => s + costTo(+(b.stats && b.stats[k]) || 1), 0);
   app.innerHTML = `<a class="backlink" href="#">← ${t('back')}</a>
   <section class="panel dhead" style="--c:${clsColor(b.class)}">
     <div class="dh-l">
-      <div class="bc-top"><span class="cls">${esc(b.class)}</span><span class="lv">Lv. ${b.level | 0}</span>${b._sample ? `<span class="samp">${t('sample')}</span>` : ''}</div>
+      <div class="bc-top"><span class="cls">${esc(b.class)}</span><span class="lv">Lv. ${b.level | 0}</span></div>
       <h1 class="stroke">${esc(b.title)}</h1>
       <div class="by">${t('by')} <b>${esc(b.roblox_name)}</b> · ${ago(b.created_at)}</div>
       ${b.tags && b.tags.length ? `<div class="tags">${b.tags.map(x => `<span class="tag">${esc(x)}</span>`).join('')}</div>` : ''}
@@ -389,21 +405,35 @@ function renderDetail(){
       <div class="rstars" role="group" aria-label="${t('rateThis')}">${[1,2,3,4,5].map(n => `<button class="rs${n <= myR ? ' on' : ''}" data-rate="${n}" aria-label="${n} / 5" aria-pressed="${n === myR}">${STAR}</button>`).join('')}</div></section>`}
   <div class="dgrid">
     <div class="dcol">
-      <section class="panel"><h2 class="stroke">${t('stats')}</h2><div class="sbars">${STATS.map(k => { const v = +(b.stats && b.stats[k]) || 0; return `<div class="srow"><span>${k}</span><i><b style="width:${v / mx * 100}%"></b></i><em>${v}</em></div>`; }).join('')}</div></section>
-      <section class="panel"><h2 class="stroke">${t('concept')}</h2><p class="concept">${esc(b.concept || '—')}</p></section>
+      <section class="panel"><h2 class="stroke">${t('gear')}</h2><ul class="gearlist">${SLOTS.map(s => gearRow(s, (b.gear || {})[s])).join('')}</ul></section>
+      <section class="panel"><h2 class="stroke">${t('cards')}</h2><div class="cardgrid">${G.cardSlotLevels.map((need, i) => { const c = CARD[cards[i]]; return c ? cardTile(c) : `<div class="ctile nil">${(b.level | 0) < need ? LOCK + `<span>Lv.${need}</span>` : `<span>${t('empty2')}</span>`}</div>`; }).join('')}</div></section>
     </div>
     <div class="dcol">
-      <section class="panel"><h2 class="stroke">${t('gear')}</h2><ul class="gear">${SLOTS.map(s => gearLi(s, b.gear && b.gear[s])).join('')}</ul></section>
-      <section class="panel"><h2 class="stroke">${t('cards')}</h2>${cards.length ? `<ul class="cardlist">${cards.map(c => `<li><span class="dot" style="--c:${rarColor(c.r)}"></span><span style="color:${rarColor(c.r)}">${esc(c.name)}</span></li>`).join('')}</ul>` : `<p class="muted" style="margin:0">${t('noCards')}</p>`}</section>
+      <section class="panel"><h2 class="stroke">${t('stats')}</h2>
+        <div class="sbars">${STATS.map(k => { const v = +(b.stats && b.stats[k]) || 0; return `<div class="srow"><span>${k}</span><i><b style="width:${v / G.maxStat * 100}%"></b></i><em>${v}</em></div>`; }).join('')}</div>
+        <p class="muted sm" style="margin:10px 0 0">${t('ptsUsed')} ${used} / ${totalPts(b.level | 0)} · Lv.${b.level | 0}</p></section>
+      ${skills.length ? `<section class="panel"><h2 class="stroke">${t('skills')}</h2>
+        ${bar.length ? `<div class="barlbl">${t('hotbar')}</div><div class="hotbar ro">${bar.map((id, i) => { const s = skills.find(x => x.id === id); return s ? `<div class="bslot"><i class="bn">${i + 1}</i>${skillIcon(s, {lv:lvls[id] || 0})}</div>` : ''; }).join('')}</div>` : ''}
+        <ul class="sklist">${skills.map(s => `<li class="${(lvls[s.id] || 0) ? '' : 'off'}">${skillIcon(s)}<span class="skn">${esc(s.name)}<i>${s.type === 'passive' ? t('passive') : t('active')}</i></span><b>${lvls[s.id] || 0}/${s.max}</b></li>`).join('')}</ul></section>` : ''}
+      <section class="panel"><h2 class="stroke">${t('concept')}</h2><p class="concept">${esc(b.concept || '—')}</p></section>
     </div>
   </div>
   <div class="dactions"><button class="btn blue" data-act="copy">${t('copyLink')}</button>
-    ${mine ? `<a class="btn orange" href="#edit-${esc(b.id)}">${t('edit')}</a><button class="btn red" data-act="del">${t('del')}</button>`
-      : (b._sample ? '' : `<button class="btn grey" data-act="report">${t('report')}</button>`)}</div>`;
+    ${mine ? `<a class="btn orange" href="#edit-${esc(b.id)}">${t('edit')}</a><button class="btn red" data-act="del">${t('del')}</button>` : `<button class="btn grey" data-act="report">${t('report')}</button>`}</div>`;
 }
 
 // ---------- editor ----------
-function blank(){ return {roblox_name:store.get('ht_name', ''), title:'', class:'', level:'', stats:Object.fromEntries(STATS.map(k => [k, ''])), concept:'', gear:{}, cards:[], tags:[]}; }
+function blank(){ return {roblox_name:store.get('ht_name', ''), title:'', class:'', level:G.maxLevel, stats:Object.fromEntries(STATS.map(k => [k, 1])), concept:'', gear:{}, cards:Array(8).fill(null), skills:{lv:{}, bar:[]}, tags:[]}; }
+function normalize(d){
+  d.level = clampN(d.level || 1, 1, G.maxLevel);
+  d.stats = Object.fromEntries(STATS.map(k => [k, clampN((d.stats || {})[k] || 1, 1, G.maxStat)]));
+  const g = {}; for (const s of SLOTS) { const e = cleanEntry((d.gear || {})[s]); if (e && ITEM[e.id].slot === s) g[s] = e; } d.gear = g;
+  const c = Array.isArray(d.cards) ? d.cards : []; d.cards = Array.from({length:8}, (_, i) => CARD[c[i]] ? c[i] : null);
+  const sk = d.skills || {}; d.skills = {lv:Object.assign({}, sk.lv || {}), bar:(sk.bar || []).filter(Boolean).slice(0, BAR_SIZE)};
+  d.tags = (d.tags || []).filter(x => TAGS.includes(x));
+  d.concept = d.concept || ''; d.title = d.title || ''; d.roblox_name = d.roblox_name || '';
+  return d;
+}
 async function viewEditor(id){
   $('#hero').hidden = true;
   let d;
@@ -413,22 +443,14 @@ async function viewEditor(id){
     if (location.hash !== '#edit-' + id) return;
     if (!b || !S.me || b.user_id !== S.me) { app.innerHTML = `<div class="empty"><p>${t('notFound')}</p><a class="btn blue" href="#">${t('back')}</a></div>`; return; }
     d = clone(b);
-  } else d = store.get('ht_draft', null) || blank();
-  d.gear = d.gear || {}; d.cards = d.cards || []; d.tags = d.tags || []; d.stats = d.stats || {};
-  S.edit = {id, d}; renderEditor();
+  } else d = store.get('ht_draft2', null) || blank();
+  S.edit = {id, d:normalize(d), sel:null, tab:'Weapon', cardQ:'', cardR:'', cardMine:false};
+  renderEditor();
 }
-const optSel = (name, cur, list) => `<select data-f="${name}"><option value="">—</option>${list.map(o => `<option${o === cur ? ' selected' : ''}>${esc(o)}</option>`).join('')}</select>`;
-function slotHTML(slot){
-  const it = S.edit.d.gear[slot] || {}, opts = it.opts || [];
-  return `<div class="slotbox" id="slot-${slot}"><div class="slothead">${slot}</div>
-    <div class="itemrow">
-      <input data-f="gear.${slot}.name" value="${esc(it.name || '')}" placeholder="${t('fItem')}" maxlength="40" aria-label="${slot} ${t('fItem')}">
-      <select data-f="gear.${slot}.tier" aria-label="${t('fTier')}">${TIERS.map(x => `<option value="${x.k}"${(it.tier || 'I') === x.k ? ' selected' : ''}>${t('fTier')} ${x.k}</option>`).join('')}</select>
-      <select data-f="gear.${slot}.refine" aria-label="${t('fRefine')}">${Array.from({length:16}, (_, i) => `<option value="${i}"${(+it.refine || 0) === i ? ' selected' : ''}>+${i}</option>`).join('')}</select>
-    </div>
-    ${opts.map((o, i) => `<div class="optrow">${optSel(`gear.${slot}.opts.${i}.s`, o.s, OPT_STATS)}<input data-f="gear.${slot}.opts.${i}.v" value="${esc(o.v || '')}" placeholder="${t('valuePh')}" maxlength="10" aria-label="${t('value')}"><button type="button" class="x" data-delopt="${slot}:${i}" aria-label="${t('del')}">×</button></div>`).join('')}
-    ${opts.length < MAX_OPTS ? `<div><button type="button" class="btn sm blue" data-addopt="${slot}">+ ${t('addOpt')}</button></div>` : ''}
-  </div>`;
+let draftTm;
+function saveDraft(){
+  clearTimeout(draftTm);
+  if (S.edit && !S.edit.id) { const d = S.edit.d; draftTm = setTimeout(() => { if (S.edit && S.edit.d === d) store.set('ht_draft2', d); }, 300); }
 }
 function renderEditor(){
   const {id, d} = S.edit;
@@ -439,99 +461,293 @@ function renderEditor(){
       <div class="f2">
         <div><label for="fR">${t('fRoblox')}</label><input id="fR" data-f="roblox_name" value="${esc(d.roblox_name)}" maxlength="20" autocomplete="username" autocapitalize="off"></div>
         <div><label for="fT">${t('fTitle')}</label><input id="fT" data-f="title" value="${esc(d.title)}" maxlength="60" placeholder="${t('fTitlePh')}"></div>
-        <div><label for="fC">${t('fClass')}</label><select id="fC" data-f="class"><option value="">${t('pick')}</option>${CLASSES.map(c => `<option${c.k === d.class ? ' selected' : ''}>${c.k}</option>`).join('')}</select></div>
-        <div><label for="fL">${t('fLevel')}</label><input id="fL" data-f="level" type="number" inputmode="numeric" min="1" max="999" value="${esc(d.level)}"></div>
+        <div><label for="fC">${t('fClass')}</label><select id="fC"><option value="">${t('pick')}</option>${G.classes.map(c => `<option value="${esc(c.name)}"${c.name === d.class ? ' selected' : ''}>${esc(c.name)}</option>`).join('')}</select></div>
+        <div><label for="fL">${t('fLevel')}</label><div class="lvrow"><button type="button" class="btn sm grey" data-lv="-1" aria-label="-1">−</button><input id="fL" type="number" inputmode="numeric" min="1" max="${G.maxLevel}" value="${d.level}"><button type="button" class="btn sm grey" data-lv="1" aria-label="+1">+</button></div></div>
       </div></section>
-    <section class="panel"><h2 class="stroke">${t('stats')}</h2><p class="hint">${t('statsHint')}</p>
-      <div class="f6">${STATS.map(k => `<div><label for="s${k}">${k}</label><input id="s${k}" data-f="stats.${k}" type="number" inputmode="numeric" min="1" max="999" value="${esc(d.stats[k])}"></div>`).join('')}</div>
-      <p class="err" id="statsErr" hidden></p></section>
-    <section class="panel"><h2 class="stroke">${t('gear')}</h2><p class="hint">${t('gearHint')}</p>${SLOTS.map(slotHTML).join('')}</section>
-    <section class="panel"><h2 class="stroke">${t('cards')}</h2><p class="hint">${t('cardsHint')}</p>
-      ${Array.from({length:CARD_SLOTS}, (_, i) => { const c = d.cards[i] || {}; return `<div class="cardrow"><span class="n">${i + 1}</span>
-        <input data-f="cards.${i}.name" value="${esc(c.name || '')}" placeholder="${t('fCard')}" maxlength="40" aria-label="${t('fCard')} ${i + 1}">
-        <select data-f="cards.${i}.r" aria-label="Rarity">${CARD_RAR.map(r => `<option${(c.r || 'Normal') === r.k ? ' selected' : ''}>${r.k}</option>`).join('')}</select></div>`; }).join('')}
-    </section>
+    <div id="builder"></div>
     <section class="panel"><h2 class="stroke">${t('concept')}</h2>
       <label for="fX">${t('fConcept')}</label><textarea id="fX" data-f="concept" maxlength="2000" placeholder="${t('fConceptPh')}">${esc(d.concept)}</textarea>
       <div class="count" id="cnt">${(d.concept || '').length} / 2000</div>
       <label style="margin-top:14px">${t('tags')} <span class="muted">· ${t('tagsHint')}</span></label>
       <div class="taggrid">${TAGS.map(x => `<label class="tgl"><input type="checkbox" data-tag="${x}"${d.tags.includes(x) ? ' checked' : ''}><span>${x}</span></label>`).join('')}</div>
     </section>
-    <p class="err" id="formErr" hidden></p>
+    <div class="err" id="formErr" hidden></div>
     <div class="edfoot"><div class="l"><button class="btn green" id="saveBtn" type="submit">${id ? t('saveEdit') : t('save')}</button>
       <a class="btn grey" href="${id ? '#build-' + esc(id) : '#'}">${t('cancel')}</a></div>
       ${id ? '' : `<span class="muted sm">${t('draftNote')} <button type="button" class="btn sm red" data-act="clear">${t('clearForm')}</button></span>`}</div>
   </form>`;
+  renderBuilder();
 }
-function setPath(o, path, v){
-  const ks = path.split('.');
-  let cur = o;
-  for (let i = 0; i < ks.length - 1; i++) {
-    const k = ks[i], nextNum = /^\d+$/.test(ks[i + 1]);
-    if (cur[k] == null || typeof cur[k] !== 'object') cur[k] = nextNum ? [] : {};
-    cur = cur[k];
-  }
-  cur[ks[ks.length - 1]] = v;
+function renderBuilder(){
+  const host = $('#builder'); if (!host) return;
+  const d = S.edit.d, cls = CLS[d.class];
+  if (!cls) { host.innerHTML = `<section class="panel"><p class="muted" style="margin:0">${t('pickClassFirst')}</p></section>`; return; }
+  host.innerHTML = `<section class="panel builder">
+      <div class="bcol"><h2 class="stroke">${t('character')}</h2>
+        <div id="slots" class="slots"></div>
+        <div id="cfg" class="cfg"></div>
+        <h3 class="sub">${t('cards')}</h3><div id="cslots" class="cardgrid"></div></div>
+      <div class="bcol bagcol" data-drop="bag"><h2 class="stroke">${t('bag')}</h2>
+        <p class="hint">${isTouch() ? t('dragHintTouch') : t('dragHint')}</p>
+        <div class="bagtabs scroll">${[...SLOTS, 'Cards'].map(s => `<button type="button" class="chip${S.edit.tab === s ? ' on' : ''}" data-tab="${s}" style="--c:#f39a3d">${s === 'Cards' ? t('cards') : s}</button>`).join('')}</div>
+        <div id="bag" class="bag"></div></div>
+    </section>
+    <div class="twocol">
+      <section class="panel"><h2 class="stroke">${t('stats')}</h2><div id="stats"></div></section>
+      <section class="panel"><h2 class="stroke">${t('skills')}</h2><div id="skills"></div></section>
+    </div>`;
+  renderSlots(); renderCfg(); renderCardSlots(); renderBag(); renderStats(); renderSkills();
 }
-let draftTm;
-function saveDraft(){
-  clearTimeout(draftTm);
-  if (S.edit && !S.edit.id) { const d = S.edit.d; draftTm = setTimeout(() => { if (S.edit && S.edit.d === d) store.set('ht_draft', d); }, 300); }
+function renderSlots(){
+  const el = $('#slots'); if (!el) return; const d = S.edit.d;
+  el.innerHTML = SLOT_LAYOUT.map(s => {
+    const e = d.gear[s], it = e && ITEM[e.id];
+    const bad = it && it.req > d.level;
+    return `<div class="eslot${S.edit.sel === s ? ' sel' : ''}${bad ? ' bad' : ''}" data-drop="slot:${s}" ${it ? `data-drag="slot:${s}"` : ''}>
+      ${it ? itemTile(it, {refine:e.refine}) : `<div class="tile nil"></div>`}<span class="esn">${s}</span></div>`;
+  }).join('');
 }
-function validate(d){
-  const e = {};
-  if (!/^[A-Za-z0-9_]{3,20}$/.test(String(d.roblox_name || '').trim())) e.roblox_name = t('eRoblox');
-  const tl = String(d.title || '').trim(); if (tl.length < 3 || tl.length > 60) e.title = t('eTitle');
-  if (!CLASSES.some(c => c.k === d.class)) e.class = t('eClass');
-  const lv = Number(d.level); if (!Number.isInteger(lv) || lv < 1 || lv > 999) e.level = t('eLevel');
-  for (const k of STATS) { const v = Number(d.stats[k]); if (String(d.stats[k]).trim() === '' || !Number.isInteger(v) || v < 1 || v > 999) e['stats.' + k] = t('eStats'); }
-  return e;
+function rangeRow(key, v, r, path, lab){
+  return `<div class="orow"><span class="olbl">${esc(lab)}</span><input type="range" min="${r[0]}" max="${r[1]}" step="1" value="${v}" data-o="${path}" aria-label="${esc(lab)}"><b class="oval" data-ov="${path}">${esc(label(key, v))}</b></div>`;
 }
-function cleanBuild(d){
-  const gear = {};
-  for (const s of SLOTS) {
-    const it = d.gear[s];
-    if (it && String(it.name || '').trim()) gear[s] = {
-      name:String(it.name).trim().slice(0, 40), tier:TIERS.some(x => x.k === it.tier) ? it.tier : 'I',
-      refine:Math.min(15, Math.max(0, parseInt(it.refine, 10) || 0)),
-      opts:(it.opts || []).filter(o => o && OPT_STATS.includes(o.s) && String(o.v || '').trim()).slice(0, MAX_OPTS).map(o => ({s:o.s, v:String(o.v).trim().slice(0, 10)}))
-    };
-  }
-  const cards = (d.cards || []).slice(0, CARD_SLOTS).filter(c => c && String(c.name || '').trim())
-    .map(c => ({name:String(c.name).trim().slice(0, 40), r:CARD_RAR.some(r => r.k === c.r) ? c.r : 'Normal'}));
-  return {roblox_name:String(d.roblox_name).trim(), title:String(d.title).trim(), class:d.class, level:Number(d.level),
-    stats:Object.fromEntries(STATS.map(k => [k, Number(d.stats[k])])), concept:String(d.concept || '').trim().slice(0, 2000),
-    gear, cards, tags:(d.tags || []).filter(x => TAGS.includes(x)).slice(0, MAX_TAGS)};
+function renderCfg(){
+  const el = $('#cfg'); if (!el) return; const d = S.edit.d, s = S.edit.sel, e = s && d.gear[s], it = e && ITEM[e.id];
+  if (!it) { el.innerHTML = `<p class="hint" style="margin:0">${t('selectSlot')}</p>`; return; }
+  const usedKeys = new Set(e.lines.map(l => l.k));
+  const spOpts = it.specials;
+  el.innerHTML = `<div class="cfghead">${itemTile(it, {refine:e.refine})}<div class="cfgname"><div class="iname" style="color:${tierColor(it.tier)}">${e.refine ? '+' + e.refine + ' ' : ''}${esc(it.name)}</div>
+      <div class="muted sm">Tier ${roman(it.tier)} · Lv.${it.req} · ${it.lines} ${t('lines')}${spOpts.length ? ' + 1' : ''}</div></div>
+      <button type="button" class="btn sm red" data-act="unequip">${t('remove')}</button></div>
+    <div class="orow"><span class="olbl">${t('refine')}</span><select data-o="refine" aria-label="${t('refine')}">${Array.from({length:G.refineMax + 1}, (_, i) => `<option value="${i}"${i === e.refine ? ' selected' : ''}>+${i}</option>`).join('')}</select></div>
+    ${rangeRow(it.main, e.main, [it.min, it.max], 'main', t('mainStat'))}
+    <div class="osec">${t('special')}</div>
+    ${spOpts.length ? `<div class="orow"><select data-o="spk" aria-label="${t('special')}"><option value="">${t('none')}</option>${spOpts.map(k => `<option value="${k}"${e.sp && e.sp.k === k ? ' selected' : ''}>${esc(labelName(k))}</option>`).join('')}</select>
+      ${e.sp ? (() => { const r = optRange(it, e.sp.k, true); return `<input type="range" min="${r[0]}" max="${r[1]}" step="1" value="${e.sp.v}" data-o="spv" aria-label="${t('special')}"><b class="oval" data-ov="spv">${esc(label(e.sp.k, e.sp.v))}</b>`; })() : ''}</div>`
+      : `<p class="muted sm">${t('noSpecial')}</p>`}
+    <div class="osec">${t('options')} (${e.lines.length}/${it.lines})</div>
+    ${Array.from({length:it.lines}, (_, i) => { const l = e.lines[i]; const r = l && optRange(it, l.k, false);
+      return `<div class="orow"><select data-o="lk${i}" aria-label="${t('options')} ${i + 1}"><option value="">${t('none')}</option>${it.pool.filter(k => optRange(it, k, false) && (!usedKeys.has(k) || (l && l.k === k))).map(k => `<option value="${k}"${l && l.k === k ? ' selected' : ''}>${esc(labelName(k))}</option>`).join('')}</select>
+        ${l && r ? `<input type="range" min="${r[0]}" max="${r[1]}" step="1" value="${l.v}" data-o="lv${i}" aria-label="${esc(labelName(l.k))}"><b class="oval" data-ov="lv${i}">${esc(label(l.k, l.v))}</b>` : ''}</div>`; }).join('')}`;
 }
-async function submitEditor(){
-  const {id, d} = S.edit, e = validate(d);
-  $$('#edForm .bad').forEach(x => x.classList.remove('bad'));
-  $$('#edForm .err.f').forEach(x => x.remove());
-  const se = $('#statsErr'), fe = $('#formErr');
-  se.hidden = true; fe.hidden = true;
-  if (Object.keys(e).length) {
-    for (const [k, msg] of Object.entries(e)) {
-      const el = $(`#edForm [data-f="${k}"]`); if (!el) continue; el.classList.add('bad');
-      if (k.startsWith('stats.')) { se.textContent = msg; se.hidden = false; }
-      else el.insertAdjacentHTML('afterend', `<p class="err f">${esc(msg)}</p>`);
-    }
-    fe.textContent = t('eFix'); fe.hidden = false;
-    const first = $('#edForm .bad'); if (first) { first.scrollIntoView({block:'center', behavior:'smooth'}); first.focus({preventScroll:true}); }
+function renderCardSlots(){
+  const el = $('#cslots'); if (!el) return; const d = S.edit.d;
+  el.innerHTML = G.cardSlotLevels.map((need, i) => {
+    const lock = d.level < need, c = CARD[d.cards[i]];
+    if (lock) return `<div class="ctile nil lockd${c ? ' bad' : ''}" data-drop="cslot:${i}">${LOCK}<span>Lv.${need}</span></div>`;
+    return c ? `<div class="cwrap" data-drop="cslot:${i}" data-drag="cslot:${i}">${cardTile(c)}</div>` : `<div class="ctile nil" data-drop="cslot:${i}"><span>${i + 1}</span></div>`;
+  }).join('');
+}
+function renderBag(){
+  const el = $('#bag'); if (!el) return; const d = S.edit.d, cls = CLS[d.class], tab = S.edit.tab;
+  $$('[data-tab]').forEach(b => b.classList.toggle('on', b.dataset.tab === tab));
+  if (tab !== 'Cards') {
+    let list = itemsFor(tab, cls);
+    if (tab === 'Ring') list = list.sort((a, b) => (a.main === b.main ? a.tier - b.tier : a.main === 'ATK' ? -1 : 1));
+    el.innerHTML = `<div class="tiles">${list.map(it => itemTile(it, {drag:true, level:d.level, cls:(d.gear[tab] && d.gear[tab].id === it.id) ? 'on' : ''})).join('')}</div>`;
     return;
   }
+  const q = S.edit.cardQ.toLowerCase();
+  let cards = G.cards.filter(c => (!q || (c.name + ' ' + (c.ability || '') + ' ' + cardBonusText(c)).toLowerCase().includes(q)) && (!S.edit.cardR || c.r === S.edit.cardR) && (!S.edit.cardMine || c.cls === cls.id));
+  cards = cards.sort((a, b) => ((b.cls === cls.id) - (a.cls === cls.id)) || (RAR_ORDER.indexOf(a.r) - RAR_ORDER.indexOf(b.r)) || a.name.localeCompare(b.name));
+  el.innerHTML = `<div class="cfilter"><input type="search" id="cq" placeholder="${t('searchCard')}" value="${esc(S.edit.cardQ)}" aria-label="${t('searchCard')}">
+      <label class="tgl"><input type="checkbox" id="cmine"${S.edit.cardMine ? ' checked' : ''}><span>${t('forClass')}</span></label></div>
+    <div class="rchips scroll"><button type="button" class="chip${!S.edit.cardR ? ' on' : ''}" data-rar="" style="--c:#ddd">${t('allRarity')}</button>${RAR_ORDER.map(r => `<button type="button" class="chip${S.edit.cardR === r ? ' on' : ''}" data-rar="${r}" style="--c:${RAR_COLOR[r]}">${RAR_NAME[r]}</button>`).join('')}</div>
+    <div class="cardgrid bagcards">${cards.map(c => cardTile(c, {drag:true, cls:d.cards.includes(c.id) ? 'on' : ''})).join('')}</div>`;
+}
+function renderStats(){
+  const el = $('#stats'); if (!el) return; const d = S.edit.d;
+  const total = totalPts(d.level), used = STATS.reduce((s, k) => s + costTo(d.stats[k]), 0), left = total - used;
+  el.innerHTML = `<div class="ptsbox${left < 0 ? ' over' : ''}"><span>${left < 0 ? t('ptsOver') : t('ptsLeft')}</span><b>${left}</b><i>/ ${total}</i></div>
+    <div class="stgrid">${STATS.map(k => { const v = d.stats[k], nc = v < G.maxStat ? G.upCost[v - 1] : 0;
+      return `<div class="strow"><span class="stk">${k}</span><button type="button" class="stb" data-st="${k}:-1" aria-label="${k} -1" ${v <= 1 ? 'disabled' : ''}>−</button>
+        <input type="number" inputmode="numeric" min="1" max="${G.maxStat}" value="${v}" data-stv="${k}" aria-label="${k}">
+        <button type="button" class="stb" data-st="${k}:1" aria-label="${k} +1" ${nc > left || v >= G.maxStat ? 'disabled' : ''}>+</button>
+        <span class="stc">${v < G.maxStat ? `${t('nextCost')} ${nc}` : 'MAX'}</span></div>`; }).join('')}</div>
+    <div class="strow2"><button type="button" class="btn sm blue" data-act="autostat">${t('autoStat')}</button><button type="button" class="btn sm grey" data-act="resetstat">${t('resetStats')}</button></div>`;
+}
+function renderSkills(){
+  const el = $('#skills'); if (!el) return; const d = S.edit.d, cls = CLS[d.class];
+  const lv = d.skills.lv, total = skillPts(d.level), used = cls.skills.reduce((s, x) => s + (lv[x.id] || 0), 0), left = total - used;
+  el.innerHTML = `<div class="ptsbox${left < 0 ? ' over' : ''}"><span>${left < 0 ? t('ptsOver') : t('skillPts')}</span><b>${left}</b><i>/ ${total}</i></div>
+    <ul class="skedit">${cls.skills.map(s => { const n = lv[s.id] || 0, lock = d.level < s.unlock;
+      return `<li class="${lock ? 'lock' : ''}">${skillIcon(s, {drag:s.type === 'active' && !lock, lv:n})}
+        <span class="skn">${esc(s.name)}<i>${lock ? t('unlockAt') + s.unlock : (s.type === 'passive' ? t('passive') : t('active'))}</i></span>
+        <span class="skst"><button type="button" class="stb" data-sk="${s.id}:-1" ${n <= 0 ? 'disabled' : ''} aria-label="${esc(s.name)} -1">−</button><b>${n}/${s.max}</b>
+        <button type="button" class="stb" data-sk="${s.id}:1" ${lock || n >= s.max || left <= 0 ? 'disabled' : ''} aria-label="${esc(s.name)} +1">+</button></span></li>`; }).join('')}</ul>
+    <div class="barlbl">${t('hotbar')}</div>
+    <div class="hotbar">${Array.from({length:BAR_SIZE}, (_, i) => { const sid = d.skills.bar[i], s = sid && cls.skills.find(x => x.id === sid);
+      return `<div class="bslot" data-drop="bar:${i}" ${s ? `data-drag="bar:${i}"` : ''}><i class="bn">${i + 1}</i>${s ? skillIcon(s, {lv:lv[s.id] || 0}) : ''}</div>`; }).join('')}</div>
+    <p class="hint">${t('hotbarHint')}</p>`;
+}
+const RENDER = {slots:() => renderSlots(), cfg:() => renderCfg(), cards:() => renderCardSlots(), bag:() => renderBag(), stats:() => renderStats(), skills:() => renderSkills()};
+function rerender(parts){ for (const p of parts) RENDER[p](); saveDraft(); }
+
+// ---------- editor actions ----------
+function equip(itemId, slot){
+  const d = S.edit.d, it = ITEM[itemId], cls = CLS[d.class]; if (!it || !cls) return false;
+  if (slot && slot !== it.slot) return false;
+  if (it.slot === 'Weapon' && !(it.jobs || []).includes(cls.id)) { toast(t('eWeapon')); return false; }
+  if (it.req > d.level) { toast(`${it.name}: ${t('needLv')}${it.req}`); return false; }
+  const old = d.gear[it.slot];
+  d.gear[it.slot] = (old && old.id === itemId) ? old : newEntry(it);
+  S.edit.sel = it.slot; S.edit.tab = it.slot;
+  rerender(['slots', 'cfg', 'bag']); return true;
+}
+function putCard(cardId, idx){
+  const d = S.edit.d;
+  if (idx == null) idx = G.cardSlotLevels.findIndex((need, i) => d.level >= need && !d.cards[i]);
+  if (idx == null || idx < 0) { toast(t('eCardLock')); return; }
+  if (d.level < G.cardSlotLevels[idx]) { toast(`${t('eCardLock')} (Lv.${G.cardSlotLevels[idx]})`); return; }
+  d.cards[idx] = cardId; rerender(['cards', 'bag']);
+}
+function addBar(skillId, idx){
+  const d = S.edit.d, cls = CLS[d.class], s = cls && cls.skills.find(x => x.id === skillId);
+  if (!s || s.type !== 'active' || d.level < s.unlock) return;
+  if (!(d.skills.lv[skillId] > 0)) {
+    const used = cls.skills.reduce((a, x) => a + (d.skills.lv[x.id] || 0), 0);
+    if (used >= skillPts(d.level)) { toast(t('eSkillPts')); return; }
+    d.skills.lv[skillId] = 1;
+  }
+  const bar = d.skills.bar.filter(x => x !== skillId);
+  if (idx == null) { if (bar.length >= BAR_SIZE) return; bar.push(skillId); }
+  else bar.splice(Math.min(idx, bar.length), 0, skillId);
+  d.skills.bar = bar.slice(0, BAR_SIZE); rerender(['skills']);
+}
+function onDrop(src, target){
+  const d = S.edit.d; const [sk, sv] = src.split(':'); const [tk, tv] = (target || '').split(':');
+  if (sk === 'item') { if (tk === 'slot') equip(sv, tv); return; }
+  if (sk === 'slot') { if (tk === 'bag') { delete d.gear[sv]; if (S.edit.sel === sv) S.edit.sel = null; rerender(['slots', 'cfg', 'bag']); } return; }
+  if (sk === 'card') { if (tk === 'cslot') putCard(sv, +tv); return; }
+  if (sk === 'cslot') {
+    const i = +sv;
+    if (tk === 'cslot') { const j = +tv; if (d.level < G.cardSlotLevels[j]) return toast(t('eCardLock')); [d.cards[i], d.cards[j]] = [d.cards[j], d.cards[i]]; rerender(['cards']); }
+    else if (tk === 'bag') { d.cards[i] = null; rerender(['cards', 'bag']); }
+    return;
+  }
+  if (sk === 'skill') { if (tk === 'bar') addBar(sv, +tv); return; }
+  if (sk === 'bar') {
+    const i = +sv, id = d.skills.bar[i];
+    if (tk === 'bar') { const bar = d.skills.bar.slice(); bar.splice(i, 1); bar.splice(Math.min(+tv, bar.length), 0, id); d.skills.bar = bar; rerender(['skills']); }
+    else { d.skills.bar.splice(i, 1); rerender(['skills']); }
+  }
+}
+function onTap(src){
+  const [sk, sv] = src.split(':');
+  if (sk === 'item') equip(sv);
+  else if (sk === 'card') putCard(sv);
+  else if (sk === 'skill') addBar(sv);
+  else if (sk === 'slot') { S.edit.sel = sv; rerender(['slots', 'cfg']); }
+  else if (sk === 'cslot') { S.edit.d.cards[+sv] = null; rerender(['cards', 'bag']); }
+  else if (sk === 'bar') { S.edit.d.skills.bar.splice(+sv, 1); rerender(['skills']); }
+}
+function setLevel(v){
+  const d = S.edit.d; d.level = clampN(v, 1, G.maxLevel);
+  const f = $('#fL'); if (f && +f.value !== d.level) f.value = d.level;
+  if (CLS[d.class]) rerender(['slots', 'cfg', 'cards', 'bag', 'stats', 'skills']); else saveDraft();
+}
+function setClass(name){
+  const d = S.edit.d; d.class = name;
+  delete d.gear.Weapon; if (S.edit.sel === 'Weapon') S.edit.sel = null;
+  d.skills = {lv:{}, bar:[]};
+  renderBuilder(); saveDraft();
+}
+
+// ---------- drag engine (mouse: drag right away · touch: hold, then drag) ----------
+const DR = {src:null, el:null, ghost:null, timer:null, x:0, y:0, sx:0, sy:0, on:false, touch:false, moved:false, over:null};
+function dragStart(){
+  if (!DR.el) return;
+  DR.on = true; clearTimeout(DR.timer);
+  const r = DR.el.getBoundingClientRect();
+  const g = DR.el.cloneNode(true); g.classList.add('ghost'); g.removeAttribute('data-drag'); g.removeAttribute('data-drop');
+  g.style.width = r.width + 'px'; g.style.height = r.height + 'px';
+  document.body.appendChild(g); DR.ghost = g; DR.el.classList.add('dragging'); document.body.classList.add('isdrag');
+  moveGhost(DR.x, DR.y);
+  if (navigator.vibrate && DR.touch) { try { navigator.vibrate(15); } catch (e) {} }
+}
+function moveGhost(x, y){
+  if (!DR.ghost) return;
+  DR.ghost.style.transform = `translate(${x - DR.ghost.offsetWidth / 2}px, ${y - DR.ghost.offsetHeight / 2}px) scale(1.08)`;
+  const under = document.elementFromPoint(x, y);
+  const tgt = under && under.closest('[data-drop]');
+  if (DR.over !== tgt) { if (DR.over) DR.over.classList.remove('over'); DR.over = tgt; if (tgt) tgt.classList.add('over'); }
+  if (y < 60) scrollBy(0, -12); else if (y > innerHeight - 60) scrollBy(0, 12);
+}
+function dragEnd(commit){
+  clearTimeout(DR.timer);
+  const src = DR.src, over = DR.over, on = DR.on;
+  if (DR.ghost) DR.ghost.remove();
+  if (DR.el) DR.el.classList.remove('dragging');
+  if (DR.over) DR.over.classList.remove('over');
+  document.body.classList.remove('isdrag');
+  Object.assign(DR, {src:null, el:null, ghost:null, timer:null, on:false, over:null});
+  if (on && commit && src) onDrop(src, over ? over.dataset.drop : '');
+}
+document.addEventListener('pointerdown', e => {
+  const el = e.target.closest('[data-drag]'); if (!el || !S.edit || (e.button && e.button > 0)) return;
+  if (e.target.closest('input,select,textarea')) return;
+  Object.assign(DR, {src:el.dataset.drag, el, x:e.clientX, y:e.clientY, sx:e.clientX, sy:e.clientY, on:false, touch:e.pointerType !== 'mouse', moved:false});
+  if (DR.touch) DR.timer = setTimeout(dragStart, 300);
+});
+document.addEventListener('pointermove', e => {
+  if (!DR.src) return;
+  DR.x = e.clientX; DR.y = e.clientY;
+  if (!DR.on) {
+    if (Math.hypot(DR.x - DR.sx, DR.y - DR.sy) > 8) { DR.moved = true; if (DR.touch) { clearTimeout(DR.timer); DR.src = null; DR.el = null; } else dragStart(); }
+    return;
+  }
+  e.preventDefault(); moveGhost(DR.x, DR.y);
+});
+document.addEventListener('pointerup', () => {
+  if (!DR.src) return;
+  if (DR.on) return dragEnd(true);
+  const src = DR.src, moved = DR.moved; dragEnd(false);
+  if (!moved) onTap(src);
+});
+document.addEventListener('pointercancel', () => { if (DR.src) dragEnd(false); });
+document.addEventListener('touchmove', e => { if (DR.on) e.preventDefault(); }, {passive:false});
+document.addEventListener('contextmenu', e => { if (S.edit && e.target.closest('[data-drag]')) e.preventDefault(); });
+document.addEventListener('dragstart', e => { if (e.target.closest && e.target.closest('[data-drag]')) e.preventDefault(); });
+
+// ---------- validation + save ----------
+function validate(d){
+  const errs = [], bad = {};
+  if (!/^[A-Za-z0-9_]{3,20}$/.test(String(d.roblox_name || '').trim())) { errs.push(t('eRoblox')); bad.roblox_name = 1; }
+  const tl = String(d.title || '').trim(); if (tl.length < 3 || tl.length > 60) { errs.push(t('eTitle')); bad.title = 1; }
+  const cls = CLS[d.class];
+  if (!cls) { errs.push(t('eClass')); bad.class = 1; return {errs, bad}; }
+  if (STATS.reduce((s, k) => s + costTo(d.stats[k]), 0) > totalPts(d.level)) errs.push(t('eStatPts'));
+  if (cls.skills.reduce((s, x) => s + (d.skills.lv[x.id] || 0), 0) > skillPts(d.level)) errs.push(t('eSkillPts'));
+  for (const s of SLOTS) { const e = d.gear[s], it = e && ITEM[e.id]; if (!it) continue;
+    if (it.req > d.level) errs.push(`${it.name}: ${t('eItemLv')} (Lv.${it.req})`);
+    if (s === 'Weapon' && !(it.jobs || []).includes(cls.id)) errs.push(`${it.name}: ${t('eWeapon')}`); }
+  d.cards.forEach((c, i) => { if (c && d.level < G.cardSlotLevels[i]) errs.push(`${t('eCardLock')} (${i + 1} · Lv.${G.cardSlotLevels[i]})`); });
+  return {errs, bad};
+}
+function payload(d){
+  const cls = CLS[d.class];
+  const lv = {}; for (const s of cls.skills) { const n = clampN(d.skills.lv[s.id] || 0, 0, s.max); if (n && d.level >= s.unlock) lv[s.id] = n; }
+  const bar = d.skills.bar.filter(id => lv[id] && cls.skills.find(x => x.id === id && x.type === 'active')).slice(0, BAR_SIZE);
+  const gear = {}; for (const s of SLOTS) { const e = cleanEntry(d.gear[s]); if (e) gear[s] = e; }
+  return {roblox_name:String(d.roblox_name).trim(), title:String(d.title).trim(), class:d.class, level:d.level, stats:Object.assign({}, d.stats),
+    concept:String(d.concept || '').trim().slice(0, 2000), gear, cards:d.cards.slice(0, 8), skills:{lv, bar}, tags:d.tags.slice(0, MAX_TAGS)};
+}
+async function submitEditor(){
+  const {id, d} = S.edit, {errs, bad} = validate(d), fe = $('#formErr');
+  $$('#edForm input.bad, #edForm select.bad').forEach(x => x.classList.remove('bad'));
+  for (const k of Object.keys(bad)) { const el = k === 'class' ? $('#fC') : $(`#edForm [data-f="${k}"]`); if (el) el.classList.add('bad'); }
+  if (errs.length) { fe.innerHTML = `<b>${t('eFix')}</b><ul>${errs.map(x => `<li>${esc(x)}</li>`).join('')}</ul>`; fe.hidden = false; fe.scrollIntoView({block:'center', behavior:'smooth'}); return; }
+  fe.hidden = true;
   const btn = $('#saveBtn'); btn.disabled = true; btn.textContent = t('saving');
   try {
-    const p = cleanBuild(d);
+    const p = payload(d);
     const saved = id ? await S.api.update(id, p) : await S.api.create(p);
     if (!S.me) S.me = await S.api.me(false);
     store.set('ht_name', p.roblox_name);
-    if (!id) { clearTimeout(draftTm); store.del('ht_draft'); }
+    if (!id) { clearTimeout(draftTm); store.del('ht_draft2'); }
     S.cur = saved; S.listKey = null; S.edit = null;
-    toast(id ? t('savedEdit') : t('saved'));
-    location.hash = '#build-' + saved.id;
+    toast(id ? t('savedEdit') : t('saved')); location.hash = '#build-' + saved.id;
   } catch (err) {
-    console.error(err);
-    fe.textContent = /build limit/i.test(errMsg(err)) ? t('eLimit') : t('eSave'); fe.hidden = false;
+    console.error(err); fe.textContent = /build limit/i.test(errMsg(err)) ? t('eLimit') : t('eSave'); fe.hidden = false;
     btn.disabled = false; btn.textContent = id ? t('saveEdit') : t('save');
   }
 }
@@ -540,41 +756,26 @@ async function submitEditor(){
 function findBuild(id){ return S.list.find(x => x.id === id) || (S.cur && S.cur.id === id ? S.cur : null); }
 function applyLike(id, liked, count){
   if (liked) S.mine.likes.add(id); else S.mine.likes.delete(id);
-  S.list.forEach(x => { if (x.id === id) x.like_count = count; });
-  if (S.cur && S.cur.id === id) S.cur.like_count = count;
+  S.list.forEach(x => { if (x.id === id) x.like_count = count; }); if (S.cur && S.cur.id === id) S.cur.like_count = count;
   $$(`[data-like="${CSS.escape(id)}"]`).forEach(btn => { btn.classList.toggle('on', liked); btn.setAttribute('aria-pressed', liked); btn.querySelector('span').textContent = count; });
 }
 async function onLike(id){
   const b = findBuild(id); if (!b || S.busy[id]) return;
   if (S.me && b.user_id === S.me) return toast(t('ownNoRate'));
-  S.busy[id] = 1;
-  const was = S.mine.likes.has(id), before = b.like_count | 0;
+  S.busy[id] = 1; const was = S.mine.likes.has(id), before = b.like_count | 0;
   applyLike(id, !was, Math.max(0, before + (was ? -1 : 1)));
-  try {
-    const r = await S.api.toggleLike(id);
-    applyLike(id, !!r.liked, r.like_count | 0);
-    if (!S.me) S.me = await S.api.me(false);
-  } catch (e) {
-    console.error(e); applyLike(id, was, before);
-    toast(/own build/i.test(errMsg(e)) ? t('ownNoRate') : t('eAction'));
-  } finally { delete S.busy[id]; }
+  try { const r = await S.api.toggleLike(id); applyLike(id, !!r.liked, r.like_count | 0); if (!S.me) S.me = await S.api.me(false); }
+  catch (e) { console.error(e); applyLike(id, was, before); toast(/own build/i.test(errMsg(e)) ? t('ownNoRate') : t('eAction')); }
+  finally { delete S.busy[id]; }
 }
 async function onRate(n){
-  const b = S.cur; if (!b || S.busy['r' + b.id]) return;
-  S.busy['r' + b.id] = 1;
+  const b = S.cur; if (!b || S.busy['r' + b.id]) return; S.busy['r' + b.id] = 1;
   const prev = S.mine.ratings[b.id], snap = {s:b.rating_sum, c:b.rating_count};
   if (prev) b.rating_sum += n - prev; else { b.rating_sum += n; b.rating_count++; }
   S.mine.ratings[b.id] = n; renderDetail();
-  try {
-    const r = await S.api.rate(b.id, n);
-    b.rating_sum = r.rating_sum | 0; b.rating_count = r.rating_count | 0;
-    S.list.forEach(x => { if (x.id === b.id) { x.rating_sum = b.rating_sum; x.rating_count = b.rating_count; } });
-    if (!S.me) S.me = await S.api.me(false);
-  } catch (e) {
-    console.error(e); b.rating_sum = snap.s; b.rating_count = snap.c;
-    if (prev) S.mine.ratings[b.id] = prev; else delete S.mine.ratings[b.id];
-    toast(/own build/i.test(errMsg(e)) ? t('ownNoRate') : t('eAction'));
-  } finally { delete S.busy['r' + b.id]; if (location.hash === '#build-' + b.id) renderDetail(); }
+  try { const r = await S.api.rate(b.id, n); b.rating_sum = r.rating_sum | 0; b.rating_count = r.rating_count | 0; S.list.forEach(x => { if (x.id === b.id) { x.rating_sum = b.rating_sum; x.rating_count = b.rating_count; } }); if (!S.me) S.me = await S.api.me(false); }
+  catch (e) { console.error(e); b.rating_sum = snap.s; b.rating_count = snap.c; if (prev) S.mine.ratings[b.id] = prev; else delete S.mine.ratings[b.id]; toast(/own build/i.test(errMsg(e)) ? t('ownNoRate') : t('eAction')); }
+  finally { delete S.busy['r' + b.id]; if (location.hash === '#build-' + b.id) renderDetail(); }
 }
 async function onCopy(){
   const url = location.href.split('#')[0] + '#build-' + S.cur.id;
@@ -592,62 +793,97 @@ async function onReport(){
   if (S.mine.reports.has(b.id)) return toast(t('repAlready'));
   const reason = await modal({title:t('repQ'), body:`<p>${t('repMsg')}</p>`, okLabel:t('repSend'), okClass:'red', input:true});
   if (reason === null) return;
-  try { await S.api.report(b.id, reason.slice(0, 300)); S.mine.reports.add(b.id); toast(t('repDone')); }
-  catch (e) { console.error(e); toast(t('eAction')); }
+  try { await S.api.report(b.id, reason.slice(0, 300)); S.mine.reports.add(b.id); toast(t('repDone')); } catch (e) { console.error(e); toast(t('eAction')); }
 }
 
 // ---------- events ----------
-let qTm;
+let qTm, cqTm;
 document.addEventListener('input', e => {
   const el = e.target;
   if (el.id === 'q') { clearTimeout(qTm); qTm = setTimeout(() => { S.filter.q = el.value.trim(); loadList(true); }, 300); return; }
   if (!S.edit || !el.closest('#edForm')) return;
-  if (el.dataset.f) {
-    setPath(S.edit.d, el.dataset.f, el.value);
-    if (el.classList.contains('bad')) {
-      el.classList.remove('bad');
-      const n = el.nextElementSibling; if (n && n.matches('.err.f')) n.remove();
-      if (el.dataset.f.startsWith('stats.') && !$('#edForm .f6 .bad')) $('#statsErr').hidden = true;
-      if (!$('#edForm .bad')) $('#formErr').hidden = true;
-    }
-    if (el.id === 'fX') $('#cnt').textContent = `${el.value.length} / 2000`; saveDraft(); }
+  const d = S.edit.d;
+  if (el.id === 'cq') { S.edit.cardQ = el.value; clearTimeout(cqTm); cqTm = setTimeout(() => { renderBag(); const c = $('#cq'); if (c) { c.focus(); c.setSelectionRange(c.value.length, c.value.length); } }, 250); return; }
+  if (el.dataset.f) { d[el.dataset.f] = el.value; el.classList.remove('bad'); if (el.id === 'fX') $('#cnt').textContent = `${el.value.length} / 2000`; saveDraft(); return; }
+  if (el.dataset.o && el.type === 'range') {
+    const e2 = d.gear[S.edit.sel]; if (!e2) return; const o = el.dataset.o, v = +el.value;
+    let txt = '';
+    if (o === 'main') { e2.main = v; txt = label(ITEM[e2.id].main, v); }
+    else if (o === 'spv' && e2.sp) { e2.sp.v = v; txt = label(e2.sp.k, v); }
+    else if (o.startsWith('lv')) { const l = e2.lines[+o.slice(2)]; if (l) { l.v = v; txt = label(l.k, v); } }
+    const out = $(`[data-ov="${o}"]`); if (out && txt) out.textContent = txt;
+    saveDraft();
+  }
 });
 document.addEventListener('change', e => {
   const el = e.target;
   if (!S.edit || !el.closest('#edForm')) return;
+  const d = S.edit.d;
+  if (el.id === 'fC') {
+    if (d.class && (d.gear.Weapon || Object.keys(d.skills.lv).length)) {
+      modal({title:t('clsChange'), okLabel:t('change'), okClass:'orange'}).then(ok => { if (ok) setClass(el.value); else el.value = d.class; });
+    } else setClass(el.value);
+    return;
+  }
+  if (el.id === 'fL') return setLevel(el.value);
+  if (el.id === 'cmine') { S.edit.cardMine = el.checked; return renderBag(); }
+  if (el.dataset.stv) {
+    const k = el.dataset.stv, others = STATS.reduce((s, x) => s + (x === k ? 0 : costTo(d.stats[x])), 0);
+    let v = clampN(el.value, 1, G.maxStat); while (v > 1 && others + costTo(v) > totalPts(d.level)) v--;
+    d.stats[k] = v; return rerender(['stats']);
+  }
   if (el.dataset.tag) {
-    const tags = S.edit.d.tags;
-    if (el.checked) { if (tags.length >= MAX_TAGS) { el.checked = false; return toast(t('maxTags')); } tags.push(el.dataset.tag); }
-    else S.edit.d.tags = tags.filter(x => x !== el.dataset.tag);
-    saveDraft();
-  } else if (el.dataset.f) { setPath(S.edit.d, el.dataset.f, el.value); saveDraft(); }
+    if (el.checked) { if (d.tags.length >= MAX_TAGS) { el.checked = false; return toast(t('maxTags')); } d.tags.push(el.dataset.tag); }
+    else d.tags = d.tags.filter(x => x !== el.dataset.tag);
+    return saveDraft();
+  }
+  if (el.dataset.o) {
+    const e2 = d.gear[S.edit.sel], it = e2 && ITEM[e2.id]; if (!it) return; const o = el.dataset.o;
+    if (el.type === 'range') return;
+    if (o === 'refine') e2.refine = clampN(el.value, 0, G.refineMax);
+    else if (o === 'spk') { if (!el.value) e2.sp = null; else { const r = optRange(it, el.value, true); e2.sp = r ? {k:el.value, v:r[1]} : null; } }
+    else if (o.startsWith('lk')) { const i = +o.slice(2); if (!el.value) e2.lines.splice(i, 1); else { const r = optRange(it, el.value, false); if (r) e2.lines[i] = {k:el.value, v:r[1]}; } e2.lines = e2.lines.filter(Boolean); }
+    rerender(['slots', 'cfg']);
+  }
 });
 document.addEventListener('submit', e => { if (e.target.id === 'edForm') { e.preventDefault(); submitEditor(); } });
 document.addEventListener('click', async e => {
   const el = e.target.closest('button,[data-like]'); if (!el) return;
-  if (el.id === 'langBtn') { lang = lang === 'th' ? 'en' : 'th'; store.set('ht_lang', lang); applyI18n(); return route(true); }
+  if (el.id === 'langBtn') { lang = lang === 'th' ? 'en' : 'th'; store.set('ht_lang', lang); applyI18n(); return route(); }
   if (el.dataset.like) { e.preventDefault(); return onLike(el.dataset.like); }
   if (el.dataset.rate) return onRate(+el.dataset.rate);
-  if (el.dataset.sort) { S.filter.sort = el.dataset.sort; $$('[data-sort]').forEach(b => { b.classList.toggle('orange', b === el); b.classList.toggle('grey', b !== el); }); return loadList(true); }
-  if (el.dataset.cls !== undefined && el.classList.contains('chip')) { S.filter.cls = el.dataset.cls; $$('.chip').forEach(c => c.classList.toggle('on', c === el)); return loadList(true); }
-  if (el.dataset.addopt) {
-    const s = el.dataset.addopt, g = S.edit.d.gear; g[s] = g[s] || {name:'', tier:'I', refine:0, opts:[]}; g[s].opts = g[s].opts || [];
-    if (g[s].opts.length < MAX_OPTS) g[s].opts.push({s:'', v:''});
-    $('#slot-' + s).outerHTML = slotHTML(s); saveDraft();
-    const rows = $$(`#slot-${s} .optrow select`); if (rows.length) rows[rows.length - 1].focus();
+  if (!S.edit) {
+    if (el.dataset.sort) { S.filter.sort = el.dataset.sort; $$('[data-sort]').forEach(b => { b.classList.toggle('orange', b === el); b.classList.toggle('grey', b !== el); }); return loadList(true); }
+    if (el.dataset.cls !== undefined && el.classList.contains('chip')) { S.filter.cls = el.dataset.cls; $$('.chip').forEach(c => c.classList.toggle('on', c === el)); return loadList(true); }
+    const act = el.dataset.act;
+    if (act === 'retry') return loadList(true); if (act === 'more') return loadList(false); if (act === 'reroute') return route();
+    if (act === 'copy') return onCopy(); if (act === 'del') return onDelete(); if (act === 'report') return onReport();
     return;
   }
-  if (el.dataset.delopt) { const [s, i] = el.dataset.delopt.split(':'); S.edit.d.gear[s].opts.splice(+i, 1); $('#slot-' + s).outerHTML = slotHTML(s); saveDraft(); return; }
+  const d = S.edit.d;
+  if (el.dataset.tab) { S.edit.tab = el.dataset.tab; return renderBag(); }
+  if (el.dataset.rar !== undefined) { S.edit.cardR = el.dataset.rar; return renderBag(); }
+  if (el.dataset.lv) return setLevel(d.level + +el.dataset.lv);
+  if (el.dataset.st) {
+    const [k, n] = el.dataset.st.split(':'); const v = d.stats[k] + +n;
+    if (v < 1 || v > G.maxStat) return;
+    if (+n > 0 && STATS.reduce((s, x) => s + costTo(x === k ? v : d.stats[x]), 0) > totalPts(d.level)) return;
+    d.stats[k] = v; return rerender(['stats']);
+  }
+  if (el.dataset.sk) {
+    const [sid, n] = el.dataset.sk.split(':'); const cls = CLS[d.class], s = cls && cls.skills.find(x => x.id === sid); if (!s) return;
+    const v = clampN((d.skills.lv[sid] || 0) + +n, 0, s.max);
+    if (+n > 0 && (cls.skills.reduce((a, x) => a + (x.id === sid ? v : (d.skills.lv[x.id] || 0)), 0) > skillPts(d.level) || d.level < s.unlock)) return;
+    if (v) d.skills.lv[sid] = v; else { delete d.skills.lv[sid]; d.skills.bar = d.skills.bar.filter(x => x !== sid); }
+    return rerender(['skills']);
+  }
   const act = el.dataset.act;
-  if (act === 'retry') return loadList(true);
-  if (act === 'more') return loadList(false);
-  if (act === 'reroute') return route(true);
-  if (act === 'copy') return onCopy();
-  if (act === 'del') return onDelete();
-  if (act === 'report') return onReport();
+  if (act === 'unequip') { delete d.gear[S.edit.sel]; S.edit.sel = null; return rerender(['slots', 'cfg', 'bag']); }
+  if (act === 'autostat') { d.stats = autoStats(CLS[d.class], d.level); return rerender(['stats']); }
+  if (act === 'resetstat') { d.stats = Object.fromEntries(STATS.map(k => [k, 1])); return rerender(['stats']); }
   if (act === 'clear') {
     if (!await modal({title:t('clearQ'), body:`<p>${t('clearMsg')}</p>`, okLabel:t('clearForm'), okClass:'red'})) return;
-    store.del('ht_draft'); S.edit = {id:null, d:blank()}; renderEditor(); scrollTo(0, 0);
+    store.del('ht_draft2'); S.edit = {id:null, d:normalize(blank()), sel:null, tab:'Weapon', cardQ:'', cardR:'', cardMine:false}; renderEditor(); scrollTo(0, 0);
   }
 });
 
@@ -657,7 +893,7 @@ function applyI18n(){
   $$('[data-i18n]').forEach(el => { el.textContent = t(el.dataset.i18n); });
   const lb = $('#langBtn'); lb.hidden = !thOK; lb.textContent = lang === 'th' ? 'EN' : 'ไทย';
 }
-function route(force){
+function route(){
   const h = decodeURIComponent(location.hash.slice(1));
   const next = h.startsWith('build-') ? 'detail' : h === 'new' ? 'new' : h.startsWith('edit-') ? 'edit' : 'list';
   if (S.view === 'list' && next !== 'list') S.scrollY = scrollY;
@@ -671,19 +907,13 @@ function route(force){
 }
 async function init(){
   applyI18n();
+  if (!G) { app.innerHTML = `<div class="empty"><p>${t('errConnect')}</p></div>`; return; }
   if (CFG.SUPABASE_URL && CFG.SUPABASE_ANON_KEY) {
-    try {
-      await loadScript(SUPA_CDN);
-      S.api = SupaAPI(window.supabase.createClient(CFG.SUPABASE_URL, CFG.SUPABASE_ANON_KEY, {auth:{persistSession:true, autoRefreshToken:true}}));
-    } catch (e) {
-      console.error(e);
-      app.innerHTML = `<div class="empty"><p>${t('errConnect')}</p><button class="btn blue" onclick="location.reload()">${t('retry')}</button></div>`;
-      return;
-    }
+    try { await loadScript(SUPA_CDN); S.api = SupaAPI(window.supabase.createClient(CFG.SUPABASE_URL, CFG.SUPABASE_ANON_KEY, {auth:{persistSession:true, autoRefreshToken:true}})); }
+    catch (e) { console.error(e); app.innerHTML = `<div class="empty"><p>${t('errConnect')}</p><button class="btn blue" onclick="location.reload()">${t('retry')}</button></div>`; return; }
   } else { S.api = DemoAPI(); $('#modeNote').hidden = false; }
   try { S.me = await S.api.me(false); S.mine = await S.api.myState(); } catch (e) { console.error(e); }
-  route();
-  addEventListener('hashchange', () => route());
+  route(); addEventListener('hashchange', () => route());
 }
 init();
 }
