@@ -10,14 +10,23 @@ const icon = id => id ? ICON_BASE + id + '.png' : '';
 
 // ---------- game data helpers ----------
 const STATS = ['STR','AGI','VIT','INT','DEX','LUK'];
-const SLOTS = ['Weapon','Helm','Mask','Armor','Cloak','Boots','Ring'];
-const SLOT_LAYOUT = ['Helm','Mask','Weapon','Armor','Ring','Cloak','Boots'];
+const SLOTS = ['Weapon','Helm','Mask','Armor','Cloak','Boots','Ring','Ring2'];
+// same layout as the in-game Bag screen: left column / right column (2 ring slots = Acc. 1 + Acc. 2)
+const SLOT_L = ['Helm','Weapon','Cloak','Ring'], SLOT_R = ['Mask','Armor','Boots','Ring2'];
+const SLOT_NAME = {Weapon:'Weapon', Helm:'Helm', Mask:'Mask', Armor:'Armor', Cloak:'Cloak', Boots:'Boots', Ring:'Ring 1', Ring2:'Ring 2'};
+const BAG_TABS = ['Weapon','Helm','Mask','Armor','Cloak','Boots','Ring'];
+const kindOf = s => s === 'Ring2' ? 'Ring' : s;
 const BAR_SIZE = 9, MAX_TAGS = 6, PAGE = 24;
 const TAGS = ['Solo','Party','Boss','Farming','AoE','Single Target','Tank','Support','Budget','Endgame'];
 const CLASSES = G ? G.classes.map(c => ({k:c.name, c:c.color, id:c.id})) : [];
 const CLS = G ? Object.fromEntries(G.classes.map(c => [c.name, c])) : {};
 const ITEM = G ? Object.fromEntries(G.items.map(i => [i.id, i])) : {};
 const CARD = G ? Object.fromEntries(G.cards.map(c => [c.id, c])) : {};
+const SKILL = G ? Object.fromEntries(G.classes.flatMap(c => c.skills.map(s => [s.id, Object.assign({cls:c.name, clsId:c.id}, s)]))) : {};
+const PASSIVES = Object.values(SKILL).filter(s => s.type === 'passive');
+const XSLOTS = (G && G.passiveSlotLevels) || [70, 76, 82, 88, 94, 99];
+const xOpen = lv => XSLOTS.filter(n => lv >= n).length;
+const descHTML = txt => esc(txt || '').replace(/\n/g, '<br>');
 const RAR_COLOR = {grey:'#9aa0ad', green:'#4cbf4f', blue:'#3d8ee6', purple:'#9b5de5', gold:'#e8a81e', red:'#e0483e'};
 const RAR_ORDER = ['red','gold','purple','blue','green','grey'];
 const RAR_NAME = {grey:'Normal', green:'Leader', blue:'Rare', purple:'Mini Boss', gold:'Boss', red:'Legendary'};
@@ -104,7 +113,10 @@ passive:'Passive',active:'Active',unlockAt:'Unlocks at Lv.',forClass:'For my cla
 eStatPts:'Stat points are over the limit for this level.',eSkillPts:'Skill points are over the limit for this level.',
 eItemLv:'needs a higher level',eCardLock:'Card slot is locked at this level',eWeapon:'This weapon is not for this class',
 selectSlot:'Tap an equipped item to set its refine and options.',clsChange:'Change class? Your weapon and skills will be cleared.',change:'Change',
-lines:'lines',empty2:'Empty',ptsUsed:'pts used'},
+lines:'lines',empty2:'Empty',ptsUsed:'pts used',
+extra:'Extra Passive',xOpen:'slots open',xHint:'Tap a passive to put it in an open slot, or drag it onto a slot. Tap a filled slot to empty it. In the game you can only use passives from classes you raised to Lv.99.',
+xNo:"Can't go in an Extra slot",xUsed:'Already in a slot',xLocked:'This Extra slot is still locked',xFull:'All open Extra slots are full',xSel:'Pick a passive for slot',
+eXLock:'Extra slot opens at',eXBad:"can't be used as an Extra Passive",eCardDup:'Boss cards can be used only once (normal cards can repeat)',cardHint:'Normal cards can repeat. Boss and mini boss cards only once.'},
 th:{brandSub:'บอร์ดบิลด์',browse:'ดูบิลด์',share:'แชร์บิลด์',heroTitle:'หาบิลด์เก่ง ๆ แชร์บิลด์ของคุณ',
 heroSub:'ไอเทม การ์ด และสกิลจริงจากเกม ลากใส่เป็นบิลด์แล้วแชร์ให้ทุกคนดูฟรี',
 demo:'โหมดตัวอย่าง — บันทึกแค่ในเครื่องนี้',footer:'บอร์ดบิลด์ของผู้เล่น Hunting Together RPG บน Roblox · ข้อมูลไอเทมและสกิลจากเกม',
@@ -134,7 +146,9 @@ passive:'ติดตัว',active:'กดใช้',unlockAt:'ปลดที�
 eStatPts:'แต้มสเตตัสเกินที่เลเวลนี้มีให้',eSkillPts:'แต้มสกิลเกินที่เลเวลนี้มีให้',
 eItemLv:'เลเวลยังไม่ถึง',eCardLock:'ช่องการ์ดยังล็อกที่เลเวลนี้',eWeapon:'อาวุธนี้ไม่ใช่ของคลาสนี้',
 selectSlot:'แตะไอเทมที่สวมอยู่ เพื่อตั้งค่าตีบวกและออปชัน',clsChange:'เปลี่ยนคลาส? อาวุธและสกิลจะถูกล้าง',change:'เปลี่ยน',
-lines:'แถว',empty2:'ว่าง',ptsUsed:'แต้มที่ใช้'}};
+lines:'แถว',extra:'Extra Passive (ติดตัวเสริม)',xOpen:'ช่องที่เปิด',xHint:'แตะสกิลติดตัวเพื่อใส่ช่องที่ว่าง หรือลากไปวางที่ช่อง แตะช่องที่ใส่แล้วเพื่อถอดออก ในเกมใช้ได้เฉพาะสกิลของอาชีพที่เล่นถึง Lv.99 แล้ว',
+xNo:'ใส่ช่องเสริมไม่ได้',xUsed:'ใส่อยู่แล้ว',xLocked:'ช่องเสริมนี้ยังล็อก',xFull:'ช่องเสริมที่เปิดเต็มแล้ว',xSel:'เลือกสกิลสำหรับช่อง',
+eXLock:'ช่องเสริมเปิดที่',eXBad:'ใส่ช่องเสริมไม่ได้',eCardDup:'การ์ดบอสใส่ได้ใบเดียว (การ์ดธรรมดาใส่ซ้ำได้)',cardHint:'การ์ดธรรมดาใส่ซ้ำได้ การ์ดบอสและมินิบอสใส่ได้ใบเดียว',empty2:'ว่าง',ptsUsed:'แต้มที่ใช้'}};
 
 // ---------- helpers ----------
 const $ = (s, r = document) => r.querySelector(s);
@@ -215,9 +229,14 @@ function cardLine(c){
   if (c.ability) { const parts = c.ability.split('\n'); return c.cls ? parts[parts.length - 1] : parts[0]; }
   return cardBonusText(c);
 }
+// real in-game card face (captured from the game's CardFace) · text fallback if the picture is missing
 function cardTile(c, opts = {}){
-  return `<div class="ctile${opts.cls ? ' ' + opts.cls : ''}" style="--rc:${RAR_COLOR[c.r] || '#999'}" ${opts.drag ? `data-drag="card:${c.id}"` : ''} title="${esc(c.name + '\n' + cardBonusText(c) + (c.ability ? '\n' + c.ability : ''))}">
-    <span class="cn">${esc(c.name)}</span><span class="cb">${esc(cardLine(c))}</span></div>`;
+  return `<div class="ctile art${opts.cls ? ' ' + opts.cls : ''}" style="--rc:${RAR_COLOR[c.r] || '#999'}" ${opts.drag ? `data-drag="card:${c.id}"` : ''} title="${esc(c.name + '\n' + cardBonusText(c) + (c.ability ? '\n' + c.ability : ''))}">
+    ${c.art ? `<img src="${esc(c.art)}" alt="${esc(c.name)}" draggable="false" loading="lazy" onerror="this.parentNode.classList.add('noart');this.remove()">` : ''}
+    <span class="cn">${esc(c.name)}</span><span class="cb">${esc(cardLine(c))}</span>${opts.badge ? `<b class="cbadge">${opts.badge}</b>` : ''}</div>`;
+}
+function xRow(s, why){
+  return `<li class="xrow${why ? ' off' : ''}" ${why === undefined || why ? '' : `data-drag="pas:${s.id}"`}>${skillIcon(s)}<div class="xi"><div class="xt"><b>${esc(s.name)}</b><i style="--c:${clsColor(s.cls)}">${esc(s.cls)}</i></div><p>${descHTML(s.desc)}</p>${why ? `<em>${esc(why)}</em>` : ''}</div></li>`;
 }
 function skillIcon(s, opts = {}){
   return `<div class="sk${s.type === 'passive' ? ' pas' : ''}${opts.cls ? ' ' + opts.cls : ''}" ${opts.drag ? `data-drag="skill:${s.id}"` : ''} title="${esc(s.name)}">
@@ -374,8 +393,9 @@ async function viewDetail(id){
 }
 function gearRow(slot, e){
   const it = e && ITEM[e.id];
-  if (!it) return `<li class="grow"><div class="tile nil"><i class="sn">${slot}</i></div><div class="gi"><span class="slot">${slot}</span><span class="muted">${t('emptySlot')}</span></div></li>`;
-  return `<li class="grow">${itemTile(it, {refine:e.refine})}<div class="gi"><span class="slot">${slot}</span>
+  const sn = SLOT_NAME[slot] || slot;
+  if (!it) return `<li class="grow"><div class="tile nil"><i class="sn">${sn}</i></div><div class="gi"><span class="slot">${sn}</span><span class="muted">${t('emptySlot')}</span></div></li>`;
+  return `<li class="grow">${itemTile(it, {refine:e.refine})}<div class="gi"><span class="slot">${sn}</span>
     <div class="iname" style="color:${tierColor(it.tier)}">${e.refine ? '+' + e.refine + ' ' : ''}${esc(it.name)}</div>
     <div class="imain">${esc(it.main)} ${e.main}${it.half ? ` · ${esc(it.half)} ${Math.floor(e.main / 2)}` : ''}</div>
     <ul class="opts">${entryLines(e).map(l => `<li class="${l.sp ? 'spl' : ''}">${esc(l.text)}</li>`).join('')}</ul></div></li>`;
@@ -387,6 +407,7 @@ function renderDetail(){
   const sk = b.skills || {}, lvls = sk.lv || {}, bar = sk.bar || [];
   const skills = cls ? cls.skills : [];
   const used = STATS.reduce((s, k) => s + costTo(+(b.stats && b.stats[k]) || 1), 0);
+  const xs = (Array.isArray(sk.extra) ? sk.extra : []).map((id, i) => ({s:SKILL[id], i})).filter(x => x.s);
   app.innerHTML = `<a class="backlink" href="#">← ${t('back')}</a>
   <section class="panel dhead" style="--c:${clsColor(b.class)}">
     <div class="dh-l">
@@ -406,7 +427,7 @@ function renderDetail(){
   <div class="dgrid">
     <div class="dcol">
       <section class="panel"><h2 class="stroke">${t('gear')}</h2><ul class="gearlist">${SLOTS.map(s => gearRow(s, (b.gear || {})[s])).join('')}</ul></section>
-      <section class="panel"><h2 class="stroke">${t('cards')}</h2><div class="cardgrid">${G.cardSlotLevels.map((need, i) => { const c = CARD[cards[i]]; return c ? cardTile(c) : `<div class="ctile nil">${(b.level | 0) < need ? LOCK + `<span>Lv.${need}</span>` : `<span>${t('empty2')}</span>`}</div>`; }).join('')}</div></section>
+      <section class="panel"><h2 class="stroke">${t('cards')}</h2><div class="cardgrid art">${G.cardSlotLevels.map((need, i) => { const c = CARD[cards[i]]; return c ? cardTile(c) : `<div class="ctile nil">${(b.level | 0) < need ? LOCK + `<span>Lv.${need}</span>` : `<span>${t('empty2')}</span>`}</div>`; }).join('')}</div></section>
     </div>
     <div class="dcol">
       <section class="panel"><h2 class="stroke">${t('stats')}</h2>
@@ -415,6 +436,7 @@ function renderDetail(){
       ${skills.length ? `<section class="panel"><h2 class="stroke">${t('skills')}</h2>
         ${bar.length ? `<div class="barlbl">${t('hotbar')}</div><div class="hotbar ro">${bar.map((id, i) => { const s = skills.find(x => x.id === id); return s ? `<div class="bslot"><i class="bn">${i + 1}</i>${skillIcon(s, {lv:lvls[id] || 0})}</div>` : ''; }).join('')}</div>` : ''}
         <ul class="sklist">${skills.map(s => `<li class="${(lvls[s.id] || 0) ? '' : 'off'}">${skillIcon(s)}<span class="skn">${esc(s.name)}<i>${s.type === 'passive' ? t('passive') : t('active')}</i></span><b>${lvls[s.id] || 0}/${s.max}</b></li>`).join('')}</ul></section>` : ''}
+      ${xs.length ? `<section class="panel"><h2 class="stroke">${t('extra')}</h2><ul class="xlist ro">${xs.map(x => xRow(x.s)).join('')}</ul></section>` : ''}
       <section class="panel"><h2 class="stroke">${t('concept')}</h2><p class="concept">${esc(b.concept || '—')}</p></section>
     </div>
   </div>
@@ -423,13 +445,15 @@ function renderDetail(){
 }
 
 // ---------- editor ----------
-function blank(){ return {roblox_name:store.get('ht_name', ''), title:'', class:'', level:G.maxLevel, stats:Object.fromEntries(STATS.map(k => [k, 1])), concept:'', gear:{}, cards:Array(8).fill(null), skills:{lv:{}, bar:[]}, tags:[]}; }
+function blank(){ return {roblox_name:store.get('ht_name', ''), title:'', class:'', level:G.maxLevel, stats:Object.fromEntries(STATS.map(k => [k, 1])), concept:'', gear:{}, cards:Array(8).fill(null), skills:{lv:{}, bar:[], extra:Array(6).fill(null)}, tags:[]}; }
 function normalize(d){
   d.level = clampN(d.level || 1, 1, G.maxLevel);
   d.stats = Object.fromEntries(STATS.map(k => [k, clampN((d.stats || {})[k] || 1, 1, G.maxStat)]));
-  const g = {}; for (const s of SLOTS) { const e = cleanEntry((d.gear || {})[s]); if (e && ITEM[e.id].slot === s) g[s] = e; } d.gear = g;
+  const g = {}; for (const s of SLOTS) { const e = cleanEntry((d.gear || {})[s]); if (e && ITEM[e.id].slot === kindOf(s)) g[s] = e; } d.gear = g;
   const c = Array.isArray(d.cards) ? d.cards : []; d.cards = Array.from({length:8}, (_, i) => CARD[c[i]] ? c[i] : null);
-  const sk = d.skills || {}; d.skills = {lv:Object.assign({}, sk.lv || {}), bar:(sk.bar || []).filter(Boolean).slice(0, BAR_SIZE)};
+  const sk = d.skills || {}, ex = Array.isArray(sk.extra) ? sk.extra : [];
+  d.skills = {lv:Object.assign({}, sk.lv || {}), bar:(sk.bar || []).filter(Boolean).slice(0, BAR_SIZE),
+    extra:Array.from({length:6}, (_, i) => SKILL[ex[i]] && SKILL[ex[i]].type === 'passive' ? ex[i] : null)};
   d.tags = (d.tags || []).filter(x => TAGS.includes(x));
   d.concept = d.concept || ''; d.title = d.title || ''; d.roblox_name = d.roblox_name || '';
   return d;
@@ -444,7 +468,7 @@ async function viewEditor(id){
     if (!b || !S.me || b.user_id !== S.me) { app.innerHTML = `<div class="empty"><p>${t('notFound')}</p><a class="btn blue" href="#">${t('back')}</a></div>`; return; }
     d = clone(b);
   } else d = store.get('ht_draft2', null) || blank();
-  S.edit = {id, d:normalize(d), sel:null, tab:'Weapon', cardQ:'', cardR:'', cardMine:false};
+  S.edit = {id, d:normalize(d), sel:null, xsel:null, tab:'Weapon', cardQ:'', cardR:'', cardMine:false};
   renderEditor();
 }
 let draftTm;
@@ -484,28 +508,34 @@ function renderBuilder(){
   if (!cls) { host.innerHTML = `<section class="panel"><p class="muted" style="margin:0">${t('pickClassFirst')}</p></section>`; return; }
   host.innerHTML = `<section class="panel builder">
       <div class="bcol"><h2 class="stroke">${t('character')}</h2>
-        <div id="slots" class="slots"></div>
+        <div id="slots" class="slots3"></div>
         <div id="cfg" class="cfg"></div>
-        <h3 class="sub">${t('cards')}</h3><div id="cslots" class="cardgrid"></div></div>
+        <h3 class="sub">${t('cards')}</h3><p class="hint">${t('cardHint')}</p><div id="cslots" class="cardgrid art"></div></div>
       <div class="bcol bagcol" data-drop="bag"><h2 class="stroke">${t('bag')}</h2>
         <p class="hint">${isTouch() ? t('dragHintTouch') : t('dragHint')}</p>
-        <div class="bagtabs scroll">${[...SLOTS, 'Cards'].map(s => `<button type="button" class="chip${S.edit.tab === s ? ' on' : ''}" data-tab="${s}" style="--c:#f39a3d">${s === 'Cards' ? t('cards') : s}</button>`).join('')}</div>
+        <div class="bagtabs scroll">${[...BAG_TABS, 'Cards'].map(s => `<button type="button" class="chip${S.edit.tab === s ? ' on' : ''}" data-tab="${s}" style="--c:#f39a3d">${s === 'Cards' ? t('cards') : s}</button>`).join('')}</div>
         <div id="bag" class="bag"></div></div>
     </section>
     <div class="twocol">
       <section class="panel"><h2 class="stroke">${t('stats')}</h2><div id="stats"></div></section>
       <section class="panel"><h2 class="stroke">${t('skills')}</h2><div id="skills"></div></section>
-    </div>`;
-  renderSlots(); renderCfg(); renderCardSlots(); renderBag(); renderStats(); renderSkills();
+    </div>
+    <section class="panel"><h2 class="stroke">${t('extra')}</h2><div id="extra"></div></section>`;
+  renderSlots(); renderCfg(); renderCardSlots(); renderBag(); renderStats(); renderSkills(); renderExtra();
 }
 function renderSlots(){
-  const el = $('#slots'); if (!el) return; const d = S.edit.d;
-  el.innerHTML = SLOT_LAYOUT.map(s => {
+  const el = $('#slots'); if (!el) return; const d = S.edit.d, cls = CLS[d.class];
+  const one = s => {
     const e = d.gear[s], it = e && ITEM[e.id];
     const bad = it && it.req > d.level;
     return `<div class="eslot${S.edit.sel === s ? ' sel' : ''}${bad ? ' bad' : ''}" data-drop="slot:${s}" ${it ? `data-drag="slot:${s}"` : ''}>
-      ${it ? itemTile(it, {refine:e.refine}) : `<div class="tile nil"></div>`}<span class="esn">${s}</span></div>`;
-  }).join('');
+      ${it ? itemTile(it, {refine:e.refine}) : `<div class="tile nil"></div>`}<span class="esn">${SLOT_NAME[s]}</span></div>`;
+  };
+  const w = d.gear.Weapon && ITEM[d.gear.Weapon.id];
+  el.innerHTML = `<div class="scol">${SLOT_L.map(one).join('')}</div>
+    <div class="avatar" style="--c:${clsColor(d.class)}">${w ? `<img class="avw" src="${icon(w.icon)}" alt="" draggable="false" onerror="this.remove()">` : ''}
+      <b class="avc">${esc(cls ? cls.name : '')}</b><span class="avl">Lv. ${d.level}</span></div>
+    <div class="scol">${SLOT_R.map(one).join('')}</div>`;
 }
 function rangeRow(key, v, r, path, lab){
   return `<div class="orow"><span class="olbl">${esc(lab)}</span><input type="range" min="${r[0]}" max="${r[1]}" step="1" value="${v}" data-o="${path}" aria-label="${esc(lab)}"><b class="oval" data-ov="${path}">${esc(label(key, v))}</b></div>`;
@@ -534,7 +564,7 @@ function renderCardSlots(){
   el.innerHTML = G.cardSlotLevels.map((need, i) => {
     const lock = d.level < need, c = CARD[d.cards[i]];
     if (lock) return `<div class="ctile nil lockd${c ? ' bad' : ''}" data-drop="cslot:${i}">${LOCK}<span>Lv.${need}</span></div>`;
-    return c ? `<div class="cwrap" data-drop="cslot:${i}" data-drag="cslot:${i}">${cardTile(c)}</div>` : `<div class="ctile nil" data-drop="cslot:${i}"><span>${i + 1}</span></div>`;
+    return c ? `<div class="cwrap" data-drop="cslot:${i}" data-drag="cslot:${i}">${cardTile(c)}</div>` : `<div class="ctile nil" data-drop="cslot:${i}"><span class="cnum">${i + 1}</span></div>`;
   }).join('');
 }
 function renderBag(){
@@ -543,7 +573,8 @@ function renderBag(){
   if (tab !== 'Cards') {
     let list = itemsFor(tab, cls);
     if (tab === 'Ring') list = list.sort((a, b) => (a.main === b.main ? a.tier - b.tier : a.main === 'ATK' ? -1 : 1));
-    el.innerHTML = `<div class="tiles">${list.map(it => itemTile(it, {drag:true, level:d.level, cls:(d.gear[tab] && d.gear[tab].id === it.id) ? 'on' : ''})).join('')}</div>`;
+    const worn = id => (d.gear[tab] && d.gear[tab].id === id) || (tab === 'Ring' && d.gear.Ring2 && d.gear.Ring2.id === id);
+    el.innerHTML = `<div class="tiles">${list.map(it => itemTile(it, {drag:true, level:d.level, cls:worn(it.id) ? 'on' : ''})).join('')}</div>`;
     return;
   }
   const q = S.edit.cardQ.toLowerCase();
@@ -552,7 +583,7 @@ function renderBag(){
   el.innerHTML = `<div class="cfilter"><input type="search" id="cq" placeholder="${t('searchCard')}" value="${esc(S.edit.cardQ)}" aria-label="${t('searchCard')}">
       <label class="tgl"><input type="checkbox" id="cmine"${S.edit.cardMine ? ' checked' : ''}><span>${t('forClass')}</span></label></div>
     <div class="rchips scroll"><button type="button" class="chip${!S.edit.cardR ? ' on' : ''}" data-rar="" style="--c:#ddd">${t('allRarity')}</button>${RAR_ORDER.map(r => `<button type="button" class="chip${S.edit.cardR === r ? ' on' : ''}" data-rar="${r}" style="--c:${RAR_COLOR[r]}">${RAR_NAME[r]}</button>`).join('')}</div>
-    <div class="cardgrid bagcards">${cards.map(c => cardTile(c, {drag:true, cls:d.cards.includes(c.id) ? 'on' : ''})).join('')}</div>`;
+    <div class="cardgrid art bagcards">${cards.map(c => { const n = d.cards.filter(x => x === c.id).length; return cardTile(c, {drag:true, cls:n ? 'on' : '', badge:n ? (c.u ? '✓' : '×' + n) : ''}); }).join('')}</div>`;
 }
 function renderStats(){
   const el = $('#stats'); if (!el) return; const d = S.edit.d;
@@ -579,25 +610,54 @@ function renderSkills(){
       return `<div class="bslot" data-drop="bar:${i}" ${s ? `data-drag="bar:${i}"` : ''}><i class="bn">${i + 1}</i>${s ? skillIcon(s, {lv:lv[s.id] || 0}) : ''}</div>`; }).join('')}</div>
     <p class="hint">${t('hotbarHint')}</p>`;
 }
-const RENDER = {slots:() => renderSlots(), cfg:() => renderCfg(), cards:() => renderCardSlots(), bag:() => renderBag(), stats:() => renderStats(), skills:() => renderSkills()};
+// Extra Passive = the game's 6 "Extra Slots" (DarkCharClient): passives of OTHER classes, opened at Lv.70/76/82/88/94/99,
+// no repeats, never the own class, never NoExtra passives (Katana Mastery, Mae Mai Flow, Storm Sweep, Potion Expert)
+function renderExtra(){
+  const el = $('#extra'); if (!el) return; const d = S.edit.d, cls = CLS[d.class]; if (!cls) return;
+  const open = xOpen(d.level), ex = d.skills.extra, sel = S.edit.xsel;
+  const slots = XSLOTS.map((need, i) => {
+    const s = SKILL[ex[i]];
+    if (i >= open) return `<div class="xslot lockd${s ? ' bad' : ''}" data-drop="xslot:${i}">${s ? skillIcon(s) : LOCK}<span>Lv.${need}</span></div>`;
+    return `<div class="xslot${sel === i ? ' sel' : ''}${s ? ' full' : ''}" data-drop="xslot:${i}" data-drag="xslot:${i}">${s ? skillIcon(s) : '<b class="plus">+</b>'}<span>${s ? esc(s.name) : t('empty2')}</span></div>`;
+  }).join('');
+  const list = PASSIVES.filter(s => s.clsId !== cls.id).map(s => ({s, why:s.noExtra ? t('xNo') : ex.includes(s.id) ? t('xUsed') : ''}))
+    .sort((a, b) => (!!a.why - !!b.why) || a.s.cls.localeCompare(b.s.cls) || a.s.name.localeCompare(b.s.name));
+  el.innerHTML = `<div class="ptsbox"><span>${t('xOpen')}</span><b>${open}</b><i>/ 6</i></div>
+    <div class="xslots">${slots}</div>
+    <p class="hint">${sel != null && sel < open ? `<b>${t('xSel')} ${sel + 1}</b> · ` : ''}${t('xHint')}</p>
+    <div class="xpool" data-drop="xpool"><ul class="xlist">${list.map(x => xRow(x.s, x.why)).join('')}</ul></div>`;
+}
+function addExtra(id, idx){
+  const d = S.edit.d, cls = CLS[d.class], s = SKILL[id], open = xOpen(d.level); if (!s || !cls || s.type !== 'passive' || s.clsId === cls.id) return;
+  if (s.noExtra) return toast(`${s.name}: ${t('xNo')}`);
+  if (!open) return toast(`${t('xLocked')} (Lv.${XSLOTS[0]})`);
+  const ex = d.skills.extra.map(x => x === id ? null : x);
+  if (idx == null) { idx = S.edit.xsel != null && S.edit.xsel < open ? S.edit.xsel : ex.findIndex((x, i) => i < open && !x); if (idx < 0) return toast(t('xFull')); }
+  if (idx >= open) return toast(`${t('xLocked')} (Lv.${XSLOTS[idx]})`);
+  ex[idx] = id; d.skills.extra = ex; S.edit.xsel = null; rerender(['extra']);
+}
+const RENDER = {slots:() => renderSlots(), cfg:() => renderCfg(), cards:() => renderCardSlots(), bag:() => renderBag(), stats:() => renderStats(), skills:() => renderSkills(), extra:() => renderExtra()};
 function rerender(parts){ for (const p of parts) RENDER[p](); saveDraft(); }
 
 // ---------- editor actions ----------
 function equip(itemId, slot){
   const d = S.edit.d, it = ITEM[itemId], cls = CLS[d.class]; if (!it || !cls) return false;
-  if (slot && slot !== it.slot) return false;
+  if (slot && kindOf(slot) !== it.slot) return false;
   if (it.slot === 'Weapon' && !(it.jobs || []).includes(cls.id)) { toast(t('eWeapon')); return false; }
   if (it.req > d.level) { toast(`${it.name}: ${t('needLv')}${it.req}`); return false; }
-  const old = d.gear[it.slot];
-  d.gear[it.slot] = (old && old.id === itemId) ? old : newEntry(it);
-  S.edit.sel = it.slot; S.edit.tab = it.slot;
+  if (!slot) slot = it.slot !== 'Ring' ? it.slot : !d.gear.Ring ? 'Ring' : !d.gear.Ring2 ? 'Ring2' : (S.edit.sel === 'Ring2' ? 'Ring2' : 'Ring');
+  const old = d.gear[slot];
+  d.gear[slot] = (old && old.id === itemId) ? old : newEntry(it);
+  S.edit.sel = slot; S.edit.tab = it.slot;
   rerender(['slots', 'cfg', 'bag']); return true;
 }
+// game rule (PlayerStatsService.validateCards): normal cards can repeat, boss / mini boss cards (Unique) only once
 function putCard(cardId, idx){
-  const d = S.edit.d;
+  const d = S.edit.d, c = CARD[cardId]; if (!c) return;
   if (idx == null) idx = G.cardSlotLevels.findIndex((need, i) => d.level >= need && !d.cards[i]);
   if (idx == null || idx < 0) { toast(t('eCardLock')); return; }
   if (d.level < G.cardSlotLevels[idx]) { toast(`${t('eCardLock')} (Lv.${G.cardSlotLevels[idx]})`); return; }
+  if (c.u && d.cards.some((x, i) => x === cardId && i !== idx)) { toast(`${c.name}: ${t('eCardDup')}`); return; }
   d.cards[idx] = cardId; rerender(['cards', 'bag']);
 }
 function addBar(skillId, idx){
@@ -616,7 +676,18 @@ function addBar(skillId, idx){
 function onDrop(src, target){
   const d = S.edit.d; const [sk, sv] = src.split(':'); const [tk, tv] = (target || '').split(':');
   if (sk === 'item') { if (tk === 'slot') equip(sv, tv); return; }
-  if (sk === 'slot') { if (tk === 'bag') { delete d.gear[sv]; if (S.edit.sel === sv) S.edit.sel = null; rerender(['slots', 'cfg', 'bag']); } return; }
+  if (sk === 'slot') {
+    if (tk === 'bag') { delete d.gear[sv]; if (S.edit.sel === sv) S.edit.sel = null; rerender(['slots', 'cfg', 'bag']); }
+    else if (tk === 'slot' && tv !== sv && kindOf(tv) === kindOf(sv)) { [d.gear[sv], d.gear[tv]] = [d.gear[tv], d.gear[sv]]; for (const k of [sv, tv]) if (!d.gear[k]) delete d.gear[k]; S.edit.sel = tv; rerender(['slots', 'cfg']); }
+    return;
+  }
+  if (sk === 'pas') { if (tk === 'xslot') addExtra(sv, +tv); return; }
+  if (sk === 'xslot') {
+    const i = +sv, id = d.skills.extra[i]; if (!id) return;
+    if (tk === 'xslot') { const j = +tv; if (j >= xOpen(d.level)) return toast(`${t('xLocked')} (Lv.${XSLOTS[j]})`); [d.skills.extra[i], d.skills.extra[j]] = [d.skills.extra[j], d.skills.extra[i]]; }
+    else if (tk === 'xpool') d.skills.extra[i] = null;
+    return rerender(['extra']);
+  }
   if (sk === 'card') { if (tk === 'cslot') putCard(sv, +tv); return; }
   if (sk === 'cslot') {
     const i = +sv;
@@ -639,16 +710,20 @@ function onTap(src){
   else if (sk === 'slot') { S.edit.sel = sv; rerender(['slots', 'cfg']); }
   else if (sk === 'cslot') { S.edit.d.cards[+sv] = null; rerender(['cards', 'bag']); }
   else if (sk === 'bar') { S.edit.d.skills.bar.splice(+sv, 1); rerender(['skills']); }
+  else if (sk === 'pas') addExtra(sv);
+  else if (sk === 'xslot') { const i = +sv, ex = S.edit.d.skills.extra; if (ex[i]) { ex[i] = null; S.edit.xsel = null; } else S.edit.xsel = S.edit.xsel === i ? null : i; rerender(['extra']); }
 }
 function setLevel(v){
   const d = S.edit.d; d.level = clampN(v, 1, G.maxLevel);
   const f = $('#fL'); if (f && +f.value !== d.level) f.value = d.level;
-  if (CLS[d.class]) rerender(['slots', 'cfg', 'cards', 'bag', 'stats', 'skills']); else saveDraft();
+  if (CLS[d.class]) rerender(['slots', 'cfg', 'cards', 'bag', 'stats', 'skills', 'extra']); else saveDraft();
 }
 function setClass(name){
   const d = S.edit.d; d.class = name;
   delete d.gear.Weapon; if (S.edit.sel === 'Weapon') S.edit.sel = null;
-  d.skills = {lv:{}, bar:[]};
+  const nc = CLS[name];
+  d.skills = {lv:{}, bar:[], extra:(d.skills.extra || Array(6).fill(null)).map(x => x && SKILL[x] && (!nc || SKILL[x].clsId !== nc.id) ? x : null)};
+  S.edit.xsel = null;
   renderBuilder(); saveDraft();
 }
 
@@ -721,6 +796,11 @@ function validate(d){
     if (it.req > d.level) errs.push(`${it.name}: ${t('eItemLv')} (Lv.${it.req})`);
     if (s === 'Weapon' && !(it.jobs || []).includes(cls.id)) errs.push(`${it.name}: ${t('eWeapon')}`); }
   d.cards.forEach((c, i) => { if (c && d.level < G.cardSlotLevels[i]) errs.push(`${t('eCardLock')} (${i + 1} · Lv.${G.cardSlotLevels[i]})`); });
+  const seen = new Set(); d.cards.forEach(c => { const cd = CARD[c]; if (cd && cd.u) { if (seen.has(c)) errs.push(`${cd.name}: ${t('eCardDup')}`); seen.add(c); } });
+  const open = xOpen(d.level);
+  d.skills.extra.forEach((x, i) => { const s = SKILL[x]; if (!s) return;
+    if (i >= open) errs.push(`${t('extra')} ${i + 1}: ${t('eXLock')} Lv.${XSLOTS[i]}`);
+    else if (s.clsId === cls.id || s.noExtra) errs.push(`${s.name}: ${t('eXBad')}`); });
   return {errs, bad};
 }
 function payload(d){
@@ -729,7 +809,8 @@ function payload(d){
   const bar = d.skills.bar.filter(id => lv[id] && cls.skills.find(x => x.id === id && x.type === 'active')).slice(0, BAR_SIZE);
   const gear = {}; for (const s of SLOTS) { const e = cleanEntry(d.gear[s]); if (e) gear[s] = e; }
   return {roblox_name:String(d.roblox_name).trim(), title:String(d.title).trim(), class:d.class, level:d.level, stats:Object.assign({}, d.stats),
-    concept:String(d.concept || '').trim().slice(0, 2000), gear, cards:d.cards.slice(0, 8), skills:{lv, bar}, tags:d.tags.slice(0, MAX_TAGS)};
+    concept:String(d.concept || '').trim().slice(0, 2000), gear, cards:d.cards.slice(0, 8),
+    skills:{lv, bar, extra:d.skills.extra.map((x, i) => x && i < xOpen(d.level) && SKILL[x] && SKILL[x].clsId !== cls.id && !SKILL[x].noExtra ? x : null)}, tags:d.tags.slice(0, MAX_TAGS)};
 }
 async function submitEditor(){
   const {id, d} = S.edit, {errs, bad} = validate(d), fe = $('#formErr');
@@ -883,7 +964,7 @@ document.addEventListener('click', async e => {
   if (act === 'resetstat') { d.stats = Object.fromEntries(STATS.map(k => [k, 1])); return rerender(['stats']); }
   if (act === 'clear') {
     if (!await modal({title:t('clearQ'), body:`<p>${t('clearMsg')}</p>`, okLabel:t('clearForm'), okClass:'red'})) return;
-    store.del('ht_draft2'); S.edit = {id:null, d:normalize(blank()), sel:null, tab:'Weapon', cardQ:'', cardR:'', cardMine:false}; renderEditor(); scrollTo(0, 0);
+    store.del('ht_draft2'); S.edit = {id:null, d:normalize(blank()), sel:null, xsel:null, tab:'Weapon', cardQ:'', cardR:'', cardMine:false}; renderEditor(); scrollTo(0, 0);
   }
 });
 
