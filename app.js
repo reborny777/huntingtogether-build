@@ -8,13 +8,15 @@ const SUPA_CDN = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist
 // ---------- game data (edit here if the game changes) ----------
 const CLASSES = [
   {k:'Swordsman',c:'#d8644f'},{k:'Thief',c:'#9b6bd6'},{k:'Archer',c:'#5ea957'},{k:'Mage',c:'#4f8fd8'},
-  {k:'Cleric',c:'#d6a93c'},{k:'Merchant',c:'#c98243'},{k:'Samurai',c:'#d65577'},{k:'Alchemist',c:'#3fae98'}];
+  {k:'Cleric',c:'#d6a93c'},{k:'Merchant',c:'#c98243'},{k:'Alchemist',c:'#3fae98'},{k:'Samurai',c:'#d65577'},
+  {k:'Necromancer',c:'#7a6fb0'},{k:'Muay Thai',c:'#c0392b'}];
 const STATS = ['STR','AGI','VIT','INT','DEX','LUK'];
-const SLOTS = ['Weapon','Head','Armor','Cape','Boots','Ring','Accessory'];
+const SLOTS = ['Weapon','Helm','Mask','Armor','Cloak','Boots','Ring'];
 const TIERS = [{k:'I',c:'#c4c4c4'},{k:'II',c:'#71d46b'},{k:'III',c:'#5aa9ff'},{k:'IV',c:'#c07cff'},{k:'V',c:'#ffa040'},{k:'VI',c:'#ff5a52'}];
 const CARD_RAR = [{k:'Normal',c:'#c4c4c4'},{k:'Leader',c:'#71d46b'},{k:'Mini Boss',c:'#c07cff'},{k:'Boss',c:'#ffd257'},{k:'Red',c:'#ff5a52'}];
-const OPT_STATS = ['ATK','MATK','ATK %','MATK %','HP','SP','STR','AGI','VIT','INT','DEX','LUK','DEF','MDEF','Evasion','Accuracy',
-  'Crit Rate','Crit DMG','DEF Pen','MDEF Pen','DMG Reduction','Cooldown (CDR)','Lifesteal','SP Leech','ASPD','Cast Speed','Move Speed','SP Regen'];
+const OPT_STATS = ['STR','AGI','VIT','INT','DEX','LUK','HP','SP','DEF','MDEF','Evasion',
+  'Crit Rate','ATK %','MATK %','DEF Pen','MDEF Pen','ASPD','Cast Speed','Cooldown (CDR)','DMG Reduction',
+  'Max HP %','Max SP %','DEF %','SP Cost','Potion Heal','Move Speed','HP Regen','SP Regen','Lifesteal','SP Leech'];
 const TAGS = ['Solo','Party','Boss','Farming','AoE','Single Target','Tank','Support','Budget','Endgame'];
 const MAX_OPTS = 4, CARD_SLOTS = 8, MAX_TAGS = 6, PAGE = 24;
 
