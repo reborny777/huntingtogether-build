@@ -5,7 +5,11 @@
 'use strict';
 const ALIAS = {CRIT:'STR', CastSpeed:'MATK', HpRegen:'VIT', Speed:'FLEE'};   // the game draws these with the same atlas cell
 const IC = n => `assets/icons/${ALIAS[n] || n}.webp`;
-const img = (n, cls = 'gi') => `<img class="${cls}" src="${IC(n)}" alt="" loading="lazy" draggable="false">`;
+// base stats are drawn as a colored circle with the stat name in white (colors from the game's dark character window)
+const SC = {STR:'#e0453c', AGI:'#2a9f5e', VIT:'#ee7134', INT:'#3a82e4', DEX:'#8656e0', LUK:'#62ad28'};
+const BASE = ['STR','AGI','VIT','INT','DEX','LUK'];
+const dot = (k, cls = '') => `<span class="sdot ${cls}" style="--sc:${SC[k]}">${k}</span>`;
+const img = (n, cls = 'gi') => SC[n] ? dot(n, cls.replace(/\bgi\b/, '').trim()) : `<img class="${cls}" src="${IC(n)}" alt="" loading="lazy" draggable="false">`;
 
 // ---------- words (EN / TH) ----------
 const W = {
@@ -386,7 +390,7 @@ Object.assign(W.en, {
     stats: [['arrow_stats','Get points','Every level gives stat points. Tap the yellow arrow to spend them.'],['STR','Focus 2–3 stats','Follow your class\'s main stats. Nobody can max everything.'],['ATK','Stats become power','STR / DEX → ATK · INT → MATK · VIT → HP · AGI → speed · LUK → crit.']],
     gear: [['menu_equip','8 slots','1 weapon, 5 armor pieces and 2 rings.'],['diamond','Color = tier','Grey → green → blue → purple → orange → red. Higher tier is stronger but needs a higher level.'],['swords','Read the lines','A main stat, random lines, and one special line from Tier II up.']],
     refine: [['blacksmith','Refine +1 to +10','Each + makes the item stronger, and your weapon glows brighter.'],['weak','Fail = −1','+1 to +4 never fail. From +5 the chance drops, and a fail takes 1 level off.'],['diamond','Reroll lines','Smith Mira rerolls random lines. Lock up to 2. The special line never changes.']],
-    cards: [['card','8 card slots','Slots open at Lv.{lv}.'],['menu_index','Color = monster','Grey normal · green Leader · blue/purple Mini Boss · gold Boss · red World Boss.'],['STR','Boss cards once','Mini Boss, Boss and red cards can only be equipped once. Normal ones stack.']],
+    cards: [['card','8 card slots','Slots open at Lv.{lv}.'],['menu_index','Color = monster','Grey normal · green Leader · blue/purple Mini Boss · gold Boss · red World Boss.'],['swords','Boss cards once','Mini Boss, Boss and red cards can only be equipped once. Normal ones stack.']],
     elements: [['wind','4 elements in a loop','Wind → Water → Fire → Earth → Wind. Each one beats the next.'],['fire','125% or 75%','Hit an element you beat for 125%. Hit one that beats you for only 75%.'],['comboburn','Mix for combos','Two different elements on one monster within 6 s set off a combo.']],
     skills: [['arrow_skills','Blue arrow','1 skill point per level up to Lv.70. Tap the blue arrow to spend it.'],['INT','7 skills at max','Each skill goes to Lv.10, so 70 points max out 7 skills.'],['menu_job','Extra Passive','From Lv.70 borrow passives from other classes you raised to Lv.99.']],
     classes: [['menu_job','10 classes','Each class has its own weapon and play style.'],['menu_map','Master Class','Change class at the Master Class in the village center.'],['menu_party','Everyone fits','Every class can solo, and every class is welcome in a party.']],
@@ -402,7 +406,7 @@ Object.assign(W.th, {
     stats: [['arrow_stats','ได้แต้ม','ทุกเลเวลได้แต้มสเตตัส กดลูกศรเหลืองเพื่ออัป'],['STR','เน้น 2–3 ค่า','อัปตามค่าหลักของอาชีพ ไม่มีใครอัปเต็มทุกค่าได้'],['ATK','สเตตัสกลายเป็นพลัง','STR / DEX → ATK · INT → MATK · VIT → HP · AGI → ความเร็ว · LUK → คริ']],
     gear: [['menu_equip','8 ช่อง','อาวุธ 1 เกราะ 5 และแหวน 2'],['diamond','สี = Tier','เทา → เขียว → ฟ้า → ม่วง → ส้ม → แดง Tier สูงยิ่งแรง แต่ต้องเลเวลสูงขึ้น'],['swords','อ่านออปชัน','ค่าหลัก ออปชันสุ่ม และออปชันพิเศษ 1 บรรทัดตั้งแต่ Tier II']],
     refine: [['blacksmith','ตีบวก +1 ถึง +10','บวกแต่ละขั้นทำให้ของแรงขึ้น และอาวุธเรืองแสงขึ้น'],['weak','พลาด = −1','+1 ถึง +4 ไม่มีพลาด ตั้งแต่ +5 โอกาสลดลง ถ้าพลาดจะลด 1 ขั้น'],['diamond','สุ่มออปชันใหม่','Smith Mira สุ่มออปชันใหม่ได้ ล็อกได้ 2 บรรทัด ออปชันพิเศษไม่เปลี่ยน']],
-    cards: [['card','ช่องการ์ด 8 ช่อง','เปิดที่ Lv.{lv}'],['menu_index','สี = ประเภทมอน','เทา มอนทั่วไป · เขียว Leader · ฟ้า/ม่วง มินิบอส · ทอง บอส · แดง บอสโลก'],['STR','การ์ดบอสใส่ใบเดียว','การ์ดมินิบอส บอส และการ์ดแดงใส่ได้ใบละ 1 ใบ การ์ดทั่วไปใส่ซ้ำได้']],
+    cards: [['card','ช่องการ์ด 8 ช่อง','เปิดที่ Lv.{lv}'],['menu_index','สี = ประเภทมอน','เทา มอนทั่วไป · เขียว Leader · ฟ้า/ม่วง มินิบอส · ทอง บอส · แดง บอสโลก'],['swords','การ์ดบอสใส่ใบเดียว','การ์ดมินิบอส บอส และการ์ดแดงใส่ได้ใบละ 1 ใบ การ์ดทั่วไปใส่ซ้ำได้']],
     elements: [['wind','4 ธาตุวนเป็นวง','ลม → น้ำ → ไฟ → ดิน → ลม แต่ละธาตุชนะธาตุถัดไป'],['fire','125% หรือ 75%','ตีธาตุที่เราชนะได้ 125% ตีธาตุที่ชนะเราได้แค่ 75%'],['comboburn','ผสมให้เกิดคอมโบ','ตี 2 ธาตุต่างกันใส่มอนตัวเดียวภายใน 6 วินาที จะเกิดคอมโบ']],
     skills: [['arrow_skills','ลูกศรฟ้า','ได้ 1 แต้มสกิลต่อเลเวลจนถึง Lv.70 กดลูกศรฟ้าเพื่ออัป'],['INT','อัปเต็มได้ 7 สกิล','แต่ละสกิลสูงสุด Lv.10 แต้ม 70 แต้มจึงอัปเต็มได้ 7 สกิล'],['menu_job','Extra Passive','ตั้งแต่ Lv.70 ยืมพาสซีฟของอาชีพอื่นที่เล่นถึง Lv.99 มาใช้ได้']],
     classes: [['menu_job','10 อาชีพ','แต่ละอาชีพมีอาวุธและสไตล์ของตัวเอง'],['menu_map','Master Class','เปลี่ยนอาชีพได้ที่ Master Class กลางหมู่บ้าน'],['menu_party','เล่นได้ทุกแบบ','ทุกอาชีพเล่นคนเดียวได้ และเข้าปาร์ตี้ได้ทุกอาชีพ']],
@@ -448,10 +452,13 @@ function build(ctx){
   const costBands = []; for (let v = 1; v < G.maxStat; v += 10) costBands.push([v, Math.min(v + 9, G.maxStat), G.upCost[v - 1]]);
   const maxCost = Math.max(...costBands.map(b => b[2]));
   T.stats = {lead:L.stLead,
-    vis:`<div class="gstats">${['STR','AGI','VIT','INT','DEX','LUK'].map(k => `<article class="gstat">
-      <div class="gst-h">${img(k,'gi md')}<div><b class="stroke">${k}</b><i>${L.base[k][0]}</i></div></div>
-      <p>${L.base[k][1]}</p>
-      <div class="gbest"><span>${L.bestFor}</span>${(bestFor[k] || []).map(c => `<img class="cemb" src="assets/cls/${c.id}.webp" alt="${esc(c.name)}" title="${esc(c.name)}" loading="lazy">`).join('')}</div></article>`).join('')}</div>`,
+    vis:`<div class="gpop" id="gPop">
+      <div class="gpop-ring">${BASE.map((k, i) => `<button type="button" class="gpop-b${i === 0 ? ' on' : ''}" data-k="${k}" style="--sc:${SC[k]};--d:${i * 0.06}s" aria-label="${k} — ${L.base[k][0]}">${dot(k, 'xl')}<i>${L.base[k][0]}</i></button>`).join('')}</div>
+      ${BASE.map((k, i) => `<div class="gpop-card" data-k="${k}" style="--sc:${SC[k]};--x:${(i + 0.5) / BASE.length * 100}%"${i ? ' hidden' : ''}>
+        <div class="gpop-h">${dot(k, 'md')}<div><b class="stroke">${k}</b><i>${L.base[k][0]}</i></div></div>
+        <p>${L.base[k][1]}</p>
+        <div class="gbest"><span>${L.bestFor}</span>${(bestFor[k] || []).map(c => `<span class="gbp"><img class="cemb" src="assets/cls/${c.id}.webp" alt="" loading="lazy"><em>${esc(c.name)}</em></span>`).join('')}</div></div>`).join('')}
+    </div>`,
     more:`<div class="gtwo">
       <div class="gbox"><h3>${L.costT}</h3><p class="muted sm">${L.costP}</p>
         <div class="gcost"><div class="gc gch"><span>${L.costRange}</span><span></span><b>${L.costPts}</b></div>${costBands.map(([a, b, c]) => `<div class="gc"><span class="gcn">${a}–${b}</span><span class="gcb"><i style="width:${Math.round(c / maxCost * 100)}%"></i></span><b>${c}</b></div>`).join('')}</div></div>
@@ -576,7 +583,7 @@ function build(ctx){
       return `<article class="gcl" style="--c:${c.color}"><div class="gcl-h"><img class="gemb" src="assets/cls/${c.id}.webp" alt="" loading="lazy"><div><b class="stroke">${esc(c.name)}</b>
         <span class="gtags"><i>${L.wpn[c.weapon] || c.weapon}</i><i>${c.magic ? L.mag : L.phys}</i>${c.special ? `<i class="spc">${L.spc}</i>` : ''}</span></div></div>
         <p>${L.role[c.id] || ''}</p>
-        <div class="gcst">${top.map(k => `<span>${img(k,'gi xs')}${k}</span>`).join('')}</div></article>`; }).join('')}</div>`, more:''};
+        <div class="gcst">${top.map(k => dot(k, 'cs')).join('')}</div></article>`; }).join('')}</div>`, more:''};
 
   // ---------- status + tips ----------
   T.status = {lead:L.stsLead,
@@ -684,6 +691,14 @@ function wire(root){
     const upDef = v => { STATIC.def = v; $('#gDef').textContent = v; const p = Math.round(v / (v + 200) * 100); $('#gDefPct').textContent = p + '%'; $('#gDefBar').style.width = p + '%'; };
     upLv(STATIC.lv); upDef(STATIC.def);
     root.querySelectorAll('input[data-g]').forEach(r => r.addEventListener('input', () => (r.dataset.g === 'lv' ? upLv : upDef)(+r.value)));
+  }
+  if ($('#gPop')) {
+    const pop = $('#gPop');
+    pop.addEventListener('click', e => {
+      const b = e.target.closest('.gpop-b'); if (!b) return;
+      pop.querySelectorAll('.gpop-b').forEach(x => x.classList.toggle('on', x === b));
+      pop.querySelectorAll('.gpop-card').forEach(c => { c.hidden = c.dataset.k !== b.dataset.k; });
+    });
   }
   if ($('#gRes')) {
     const upChk = () => {
