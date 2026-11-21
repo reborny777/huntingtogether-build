@@ -978,17 +978,14 @@ function applyI18n(){
   const lb = $('#langBtn'); lb.hidden = !thOK; lb.textContent = lang === 'th' ? 'EN' : 'ไทย';
 }
 // ---------- hunter's guide (guide.js) ----------
-function guideScroll(sec){
-  const el = sec && document.getElementById('g-' + sec);
-  if (el) el.scrollIntoView({block:'start'}); else scrollTo(0, 0);
-}
+function guideScroll(sec){ if (window.HT_GUIDE) window.HT_GUIDE.open(sec, true); }
 function viewGuide(sec){
   $('#hero').hidden = true; document.body.classList.toggle('home', false);
   if (!window.HT_GUIDE) { app.innerHTML = `<div class="empty"><p>${t('errLoad')}</p></div>`; return; }
   S.guideLang = lang;
   window.HT_GUIDE.render({G, lang, app, H:{esc, itemTile, cardTile, skillIcon, labelName, totalPts, costTo, GAME_URL, rarColor: r => RAR_COLOR[r] || '#999'}});
   document.title = (lang === 'th' ? 'คู่มือนักล่า' : "Hunter's Guide") + ' · Hunting Together Builds';
-  requestAnimationFrame(() => guideScroll(sec));
+  requestAnimationFrame(() => window.HT_GUIDE.open(sec, false));
 }
 function route(){
   const h = decodeURIComponent(location.hash.slice(1));
