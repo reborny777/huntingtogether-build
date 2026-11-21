@@ -87,7 +87,7 @@ function autoStats(cls, lv){
 
 // ---------- text ----------
 const I18N = {
-en:{brandSub:'Build Board',browse:'Browse',share:'Share a build',heroTitle:'Find a build. Share yours.',
+en:{brandSub:'Build Board',browse:'Browse',guide:'Guide',guideCta:"New here? Hunter's Guide",share:'Share a build',heroTitle:'Find a build. Share yours.',
 heroSub:'Real gear, cards and skills from the game — drag them into a build and share it free with every hunter.',play:'Play on Roblox',playBand:'Hunt monsters on sky islands, collect cards and take down world bosses with friends.',
 demo:'Demo mode — saved only on this device.',footer:'Community build board for Hunting Together RPG on Roblox. Item and skill data from the game.',
 search:'Search builds or players',all:'All classes',sort_new:'Newest',sort_likes:'Most liked',sort_rating:'Top rated',
@@ -120,7 +120,7 @@ lines:'lines',empty2:'Empty',ptsUsed:'pts used',
 extra:'Extra Passive',xOpen:'slots open',xHint:'Tap a passive to put it in an open slot, or drag it onto a slot. Tap a filled slot to empty it. In the game you can only use passives from classes you raised to Lv.99.',
 xNo:"Can't go in an Extra slot",xUsed:'Already in a slot',xLocked:'This Extra slot is still locked',xFull:'All open Extra slots are full',xSel:'Pick a passive for slot',
 eXLock:'Extra slot opens at',eXBad:"can't be used as an Extra Passive",eCardDup:'Boss cards can be used only once (normal cards can repeat)',cardHint:'Normal cards can repeat. Boss and mini boss cards only once.'},
-th:{brandSub:'บอร์ดบิลด์',browse:'ดูบิลด์',share:'แชร์บิลด์',heroTitle:'หาบิลด์เก่ง ๆ แชร์บิลด์ของคุณ',
+th:{brandSub:'บอร์ดบิลด์',browse:'ดูบิลด์',guide:'คู่มือ',guideCta:'มือใหม่? อ่านคู่มือนักล่า',share:'แชร์บิลด์',heroTitle:'หาบิลด์เก่ง ๆ แชร์บิลด์ของคุณ',
 heroSub:'ไอเทม การ์ด และสกิลจริงจากเกม ลากใส่เป็นบิลด์แล้วแชร์ให้ทุกคนดูฟรี',play:'เล่นบน Roblox',playBand:'ล่ามอนบนเกาะลอยฟ้า สะสมการ์ด และล้มบอสโลกไปกับเพื่อน ๆ',
 demo:'โหมดตัวอย่าง — บันทึกแค่ในเครื่องนี้',footer:'บอร์ดบิลด์ของผู้เล่น Hunting Together RPG บน Roblox · ข้อมูลไอเทมและสกิลจากเกม',
 search:'ค้นหาบิลด์หรือชื่อผู้เล่น',all:'ทุกคลาส',sort_new:'ใหม่ล่าสุด',sort_likes:'ไลก์มากสุด',sort_rating:'คะแนนสูงสุด',
@@ -977,14 +977,31 @@ function applyI18n(){
   $$('[data-i18n]').forEach(el => { el.textContent = t(el.dataset.i18n); });
   const lb = $('#langBtn'); lb.hidden = !thOK; lb.textContent = lang === 'th' ? 'EN' : 'ไทย';
 }
+// ---------- hunter's guide (guide.js) ----------
+function guideScroll(sec){
+  const el = sec && document.getElementById('g-' + sec);
+  if (el) el.scrollIntoView({block:'start'}); else scrollTo(0, 0);
+}
+function viewGuide(sec){
+  $('#hero').hidden = true; document.body.classList.toggle('home', false);
+  if (!window.HT_GUIDE) { app.innerHTML = `<div class="empty"><p>${t('errLoad')}</p></div>`; return; }
+  S.guideLang = lang;
+  window.HT_GUIDE.render({G, lang, app, H:{esc, itemTile, cardTile, skillIcon, labelName, totalPts, costTo, GAME_URL, rarColor: r => RAR_COLOR[r] || '#999'}});
+  document.title = (lang === 'th' ? 'คู่มือนักล่า' : "Hunter's Guide") + ' · Hunting Together Builds';
+  requestAnimationFrame(() => guideScroll(sec));
+}
 function route(){
   const h = decodeURIComponent(location.hash.slice(1));
-  const next = h.startsWith('build-') ? 'detail' : h === 'new' ? 'new' : h.startsWith('edit-') ? 'edit' : 'list';
+  const next = h.startsWith('build-') ? 'detail' : h === 'new' ? 'new' : h.startsWith('edit-') ? 'edit' : (h === 'guide' || h.startsWith('guide-')) ? 'guide' : 'list';
   if (S.view === 'list' && next !== 'list') S.scrollY = scrollY;
+  const wasGuide = S.view === 'guide' && S.guideLang === lang;
   S.view = next;
+  if (next !== 'guide') document.title = 'Hunting Together Builds';
+  if (next === 'guide' && wasGuide && $('.guide')) return guideScroll(h.slice(6));
   if (next !== 'new' && next !== 'edit') S.edit = null;
   if (next === 'list') return viewList();
   scrollTo(0, 0);
+  if (next === 'guide') return viewGuide(h.slice(6));
   if (next === 'detail') return viewDetail(h.slice(6));
   if (next === 'new') return viewEditor(null);
   return viewEditor(h.slice(5));
@@ -992,9 +1009,11 @@ function route(){
 async function init(){
   applyI18n();
   if (!G) { app.innerHTML = `<div class="empty"><p>${t('errConnect')}</p></div>`; return; }
+  // the guide needs no database: show it right away
+  if (/^#guide(-|$)/.test(location.hash)) route();
   if (CFG.SUPABASE_URL && CFG.SUPABASE_ANON_KEY) {
     try { await loadScript(SUPA_CDN); S.api = SupaAPI(window.supabase.createClient(CFG.SUPABASE_URL, CFG.SUPABASE_ANON_KEY, {auth:{persistSession:true, autoRefreshToken:true}})); }
-    catch (e) { console.error(e); app.innerHTML = `<div class="empty"><p>${t('errConnect')}</p><button class="btn blue" onclick="location.reload()">${t('retry')}</button></div>`; return; }
+    catch (e) { console.error(e); if (S.view !== 'guide') app.innerHTML = `<div class="empty"><p>${t('errConnect')}</p><button class="btn blue" onclick="location.reload()">${t('retry')}</button></div>`; return; }
   } else { S.api = DemoAPI(); $('#modeNote').hidden = false; }
   try { S.me = await S.api.me(false); S.mine = await S.api.myState(); } catch (e) { console.error(e); }
   route(); addEventListener('hashchange', () => route());
