@@ -20,6 +20,9 @@ const BAR_SIZE = 9, MAX_TAGS = 6, PAGE = 24;
 const TAGS = ['Solo','Party','Boss','Farming','AoE','Single Target','Tank','Support','Budget','Endgame'];
 const CLASSES = G ? G.classes.map(c => ({k:c.name, c:c.color, id:c.id})) : [];
 const CLS = G ? Object.fromEntries(G.classes.map(c => [c.name, c])) : {};
+// the game's own class emblems (LumiPage.JobLogo sheet + special-class emblems)
+const clsImg = (name, cls = 'cemb') => { const c = CLS[name]; return c ? `<img class="${cls}" src="assets/cls/${c.id}.webp" alt="" draggable="false" loading="lazy">` : ''; };
+const GAME_URL = 'https://www.roblox.com/games/117483759937632';
 const ITEM = G ? Object.fromEntries(G.items.map(i => [i.id, i])) : {};
 const CARD = G ? Object.fromEntries(G.cards.map(c => [c.id, c])) : {};
 const SKILL = G ? Object.fromEntries(G.classes.flatMap(c => c.skills.map(s => [s.id, Object.assign({cls:c.name, clsId:c.id}, s)]))) : {};
@@ -85,7 +88,7 @@ function autoStats(cls, lv){
 // ---------- text ----------
 const I18N = {
 en:{brandSub:'Build Board',browse:'Browse',share:'Share a build',heroTitle:'Find a build. Share yours.',
-heroSub:'Real gear, cards and skills from the game — drag them into a build and share it free with every hunter.',
+heroSub:'Real gear, cards and skills from the game — drag them into a build and share it free with every hunter.',play:'Play on Roblox',playBand:'Hunt monsters on sky islands, collect cards and take down world bosses with friends.',
 demo:'Demo mode — saved only on this device.',footer:'Community build board for Hunting Together RPG on Roblox. Item and skill data from the game.',
 search:'Search builds or players',all:'All classes',sort_new:'Newest',sort_likes:'Most liked',sort_rating:'Top rated',
 loadMore:'Load more',loading:'Loading builds…',empty:'No builds yet. Be the first to share one!',
@@ -118,7 +121,7 @@ extra:'Extra Passive',xOpen:'slots open',xHint:'Tap a passive to put it in an op
 xNo:"Can't go in an Extra slot",xUsed:'Already in a slot',xLocked:'This Extra slot is still locked',xFull:'All open Extra slots are full',xSel:'Pick a passive for slot',
 eXLock:'Extra slot opens at',eXBad:"can't be used as an Extra Passive",eCardDup:'Boss cards can be used only once (normal cards can repeat)',cardHint:'Normal cards can repeat. Boss and mini boss cards only once.'},
 th:{brandSub:'บอร์ดบิลด์',browse:'ดูบิลด์',share:'แชร์บิลด์',heroTitle:'หาบิลด์เก่ง ๆ แชร์บิลด์ของคุณ',
-heroSub:'ไอเทม การ์ด และสกิลจริงจากเกม ลากใส่เป็นบิลด์แล้วแชร์ให้ทุกคนดูฟรี',
+heroSub:'ไอเทม การ์ด และสกิลจริงจากเกม ลากใส่เป็นบิลด์แล้วแชร์ให้ทุกคนดูฟรี',play:'เล่นบน Roblox',playBand:'ล่ามอนบนเกาะลอยฟ้า สะสมการ์ด และล้มบอสโลกไปกับเพื่อน ๆ',
 demo:'โหมดตัวอย่าง — บันทึกแค่ในเครื่องนี้',footer:'บอร์ดบิลด์ของผู้เล่น Hunting Together RPG บน Roblox · ข้อมูลไอเทมและสกิลจากเกม',
 search:'ค้นหาบิลด์หรือชื่อผู้เล่น',all:'ทุกคลาส',sort_new:'ใหม่ล่าสุด',sort_likes:'ไลก์มากสุด',sort_rating:'คะแนนสูงสุด',
 loadMore:'โหลดเพิ่ม',loading:'กำลังโหลดบิลด์…',empty:'ยังไม่มีบิลด์ มาแชร์เป็นคนแรกกัน!',
@@ -335,7 +338,7 @@ function cardHTML(b){
   const mx = Math.max(1, ...top.map(x => x[1])), a = avg(b);
   return `<article class="bcard" style="--c:${clsColor(b.class)}">
     <a class="cover" href="#build-${esc(b.id)}" aria-label="${esc(b.title)}"></a>
-    <div class="bc-top"><span class="cls">${esc(b.class)}</span><span class="lv">Lv. ${b.level | 0}</span></div>
+    <div class="bc-top"><span class="cls">${clsImg(b.class)}${esc(b.class)}</span><span class="lv">Lv. ${b.level | 0}</span></div>
     <h3>${esc(b.title)}</h3>
     <div class="by">${t('by')} <b>${esc(b.roblox_name)}</b> · ${ago(b.created_at)}</div>
     ${gearMini(b)}
@@ -348,11 +351,11 @@ function likeBtn(b, size){
   return `<button class="like ${size}${on ? ' on' : ''}" data-like="${esc(b.id)}" aria-pressed="${on}" ${mine ? `disabled title="${t('ownNoRate')}"` : ''}>${HEART}<span>${b.like_count | 0}</span></button>`;
 }
 function viewList(){
-  $('#hero').hidden = false;
+  $('#hero').hidden = false; document.body.classList.toggle('home', true);
   app.innerHTML = `<div class="filters">
     <div class="searchrow"><input id="q" type="search" placeholder="${t('search')}" value="${esc(S.filter.q)}" autocomplete="off" maxlength="40" aria-label="${t('search')}">
       <div class="tabs">${['new','likes','rating'].map(k => `<button class="btn sm ${S.filter.sort === k ? 'orange' : 'grey'}" data-sort="${k}">${t('sort_' + k)}</button>`).join('')}</div></div>
-    <div class="chips scroll">${[{k:'', c:'#ddd'}, ...CLASSES].map(c => `<button class="chip${S.filter.cls === c.k ? ' on' : ''}" data-cls="${esc(c.k)}" style="--c:${c.c}">${esc(c.k || t('all'))}</button>`).join('')}</div>
+    <div class="chips scroll">${[{k:'', c:'#ddd'}, ...CLASSES].map(c => `<button class="chip${c.k ? ' ce' : ''}${S.filter.cls === c.k ? ' on' : ''}" data-cls="${esc(c.k)}" style="--c:${c.c}">${clsImg(c.k)}${esc(c.k || t('all'))}</button>`).join('')}</div>
   </div><div id="grid" class="grid"></div><div id="listFoot" class="listfoot"></div>`;
   if (S.listKey === key() && S.list.length) { renderGrid(); requestAnimationFrame(() => scrollTo(0, S.scrollY)); } else loadList(true);
 }
@@ -382,7 +385,7 @@ function renderGrid(){
 
 // ---------- detail ----------
 async function viewDetail(id){
-  $('#hero').hidden = true;
+  $('#hero').hidden = true; document.body.classList.toggle('home', false);
   let b = S.list.find(x => x.id === id) || (S.cur && S.cur.id === id ? S.cur : null);
   if (b) { S.cur = b; renderDetail(); } else app.innerHTML = `<p class="muted center" style="padding:40px 0">${t('loading')}</p>`;
   try { b = (await S.api.get(id)) || null; }
@@ -411,7 +414,7 @@ function renderDetail(){
   app.innerHTML = `<a class="backlink" href="#">← ${t('back')}</a>
   <section class="panel dhead" style="--c:${clsColor(b.class)}">
     <div class="dh-l">
-      <div class="bc-top"><span class="cls">${esc(b.class)}</span><span class="lv">Lv. ${b.level | 0}</span></div>
+      <div class="bc-top"><span class="cls">${clsImg(b.class)}${esc(b.class)}</span><span class="lv">Lv. ${b.level | 0}</span></div>
       <h1 class="stroke">${esc(b.title)}</h1>
       <div class="by">${t('by')} <b>${esc(b.roblox_name)}</b> · ${ago(b.created_at)}</div>
       ${b.tags && b.tags.length ? `<div class="tags">${b.tags.map(x => `<span class="tag">${esc(x)}</span>`).join('')}</div>` : ''}
@@ -459,7 +462,7 @@ function normalize(d){
   return d;
 }
 async function viewEditor(id){
-  $('#hero').hidden = true;
+  $('#hero').hidden = true; document.body.classList.toggle('home', false);
   let d;
   if (id) {
     let b = S.cur && S.cur.id === id ? S.cur : null;
@@ -533,7 +536,7 @@ function renderSlots(){
   };
   const w = d.gear.Weapon && ITEM[d.gear.Weapon.id];
   el.innerHTML = `<div class="scol">${SLOT_L.map(one).join('')}</div>
-    <div class="avatar" style="--c:${clsColor(d.class)}">${w ? `<img class="avw" src="${icon(w.icon)}" alt="" draggable="false" onerror="this.remove()">` : ''}
+    <div class="avatar" style="--c:${clsColor(d.class)}">${clsImg(d.class, 'ave')}${w ? `<img class="avw" src="${icon(w.icon)}" alt="" draggable="false" onerror="this.remove()">` : ''}
       <b class="avc">${esc(cls ? cls.name : '')}</b><span class="avl">Lv. ${d.level}</span></div>
     <div class="scol">${SLOT_R.map(one).join('')}</div>`;
 }

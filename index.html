@@ -9,14 +9,15 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Mitr:wght@500;600&family=Nunito:wght@500;700;800&family=Sarabun:wght@400;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=3">
+<link rel="stylesheet" href="style.css?v=4">
 </head>
 <body>
 <header class="top">
   <div class="wrap topin">
     <a class="brand" href="#">
-      <span class="b1 stroke">Hunting Together</span>
-      <span class="b2" data-i18n="brandSub">Build Board</span>
+      <img class="blogo" src="assets/logo-sm.webp" alt="" width="96" height="99">
+      <span class="bt"><span class="b1 stroke">Hunting Together</span>
+      <span class="b2" data-i18n="brandSub">Build Board</span></span>
     </a>
     <nav class="topnav">
       <a class="btn sm blue" href="#" data-i18n="browse">Browse</a>
@@ -28,102 +29,26 @@
 
 <section id="hero" class="hero">
   <div class="wrap heroin">
+    <img class="hlogo" src="assets/logo.webp" alt="Hunting Together" width="393" height="406">
     <div class="herotext">
       <h1 class="stroke" data-i18n="heroTitle">Find a build. Share yours.</h1>
       <p data-i18n="heroSub">Real gear, cards and skills from the game — drag them into a build and share it free with every hunter.</p>
+      <div class="hbtns"><a class="btn green" href="#new" data-i18n="share">Share a build</a><a class="btn blue" href="https://www.roblox.com/games/117483759937632" target="_blank" rel="noopener" data-i18n="play">Play on Roblox</a></div>
       <p id="modeNote" class="note" data-i18n="demo" hidden>Demo mode — sample builds, saved only on this device.</p>
     </div>
-    <svg class="island" viewBox="0 0 640 330" role="img" aria-label="A floating sky island at night with a campfire, a wooden sign and a warp pillar">
-      <defs>
-        <radialGradient id="glow" cx="50%" cy="50%" r="50%">
-          <stop offset="0" stop-color="#f39a3d" stop-opacity=".5"/>
-          <stop offset="1" stop-color="#f39a3d" stop-opacity="0"/>
-        </radialGradient>
-        <radialGradient id="warp" cx="50%" cy="50%" r="50%">
-          <stop offset="0" stop-color="#9ae6d8" stop-opacity=".45"/>
-          <stop offset="1" stop-color="#9ae6d8" stop-opacity="0"/>
-        </radialGradient>
-        <pattern id="studs" width="12" height="4" patternUnits="userSpaceOnUse">
-          <rect x="3" y="0" width="6" height="4" rx="1" fill="#89a95f"/>
-        </pattern>
-        <g id="tree">
-          <rect x="-5" y="-46" width="10" height="46" fill="#5c3e22"/>
-          <rect x="-5" y="-46" width="3" height="46" fill="#7a5533"/>
-          <rect x="-26" y="-82" width="52" height="24" fill="#4c6a38"/>
-          <rect x="-26" y="-82" width="52" height="5" fill="#638a49"/>
-          <rect x="-19" y="-102" width="38" height="22" fill="#557a40"/>
-          <rect x="-19" y="-102" width="38" height="5" fill="#6d9653"/>
-          <rect x="-11" y="-118" width="22" height="18" fill="#5f8648"/>
-          <rect x="-11" y="-118" width="22" height="5" fill="#78a05b"/>
-          <rect x="10" y="-82" width="16" height="24" fill="#000" opacity=".18"/>
-        </g>
-        <g id="mini">
-          <rect x="-34" y="-4" width="68" height="4" fill="url(#studs)"/>
-          <rect x="-34" y="0" width="68" height="10" fill="#6e8f4c"/>
-          <rect x="-34" y="0" width="68" height="3" fill="#89a95f"/>
-          <rect x="-30" y="10" width="60" height="12" fill="#6a4d36"/>
-          <rect x="-20" y="22" width="40" height="10" fill="#5a4130"/>
-          <rect x="-8" y="32" width="16" height="8" fill="#4b3626"/>
-        </g>
-      </defs>
-      <g fill="#f4efe7">
-        <rect x="40" y="30" width="3" height="3"/><rect x="120" y="18" width="2" height="2"/><rect x="210" y="44" width="3" height="3"/>
-        <rect x="300" y="14" width="2" height="2"/><rect x="380" y="52" width="3" height="3"/><rect x="460" y="22" width="2" height="2"/>
-        <rect x="610" y="96" width="3" height="3"/><rect x="20" y="170" width="2" height="2"/><rect x="250" y="90" width="2" height="2"/>
-        <rect x="420" y="96" width="2" height="2" opacity=".6"/><rect x="160" y="80" width="2" height="2" opacity=".6"/><rect x="520" y="120" width="2" height="2" opacity=".6"/>
-        <rect x="90" y="64" width="2" height="2" opacity=".6"/><rect x="340" y="70" width="3" height="3" opacity=".7"/><rect x="600" y="250" width="2" height="2" opacity=".5"/>
-        <rect x="30" y="270" width="3" height="3" opacity=".5"/><rect x="560" y="300" width="2" height="2" opacity=".5"/><rect x="80" y="310" width="2" height="2" opacity=".5"/>
-      </g>
-      <g>
-        <rect x="540" y="34" width="40" height="44" fill="#efe6c8"/>
-        <rect x="534" y="42" width="52" height="28" fill="#efe6c8"/>
-        <rect x="548" y="44" width="8" height="8" fill="#d9cfae"/>
-        <rect x="566" y="58" width="10" height="8" fill="#d9cfae"/>
-      </g>
-      <use href="#mini" x="70" y="122"/>
-      <use href="#mini" x="582" y="182"/>
-      <ellipse cx="320" cy="176" rx="130" ry="60" fill="url(#glow)"/>
-      <ellipse cx="412" cy="150" rx="44" ry="50" fill="url(#warp)"/>
-      <rect x="110" y="192" width="420" height="4" fill="url(#studs)"/>
-      <rect x="110" y="196" width="420" height="16" fill="#6e8f4c"/>
-      <rect x="110" y="196" width="420" height="5" fill="#89a95f"/>
-      <rect x="120" y="212" width="400" height="22" fill="#6a4d36"/>
-      <rect x="470" y="212" width="50" height="22" fill="#5a4130"/>
-      <rect x="150" y="234" width="340" height="22" fill="#634833"/>
-      <rect x="440" y="234" width="50" height="22" fill="#523b2a"/>
-      <rect x="190" y="256" width="260" height="20" fill="#5a4130"/>
-      <rect x="405" y="256" width="45" height="20" fill="#4b3626"/>
-      <rect x="235" y="276" width="170" height="18" fill="#523b2a"/>
-      <rect x="280" y="294" width="80" height="16" fill="#4b3626"/>
-      <rect x="305" y="310" width="30" height="12" fill="#3f2d20"/>
-      <rect x="170" y="218" width="22" height="12" fill="#77706f"/>
-      <rect x="330" y="240" width="26" height="12" fill="#6f6a6e"/>
-      <rect x="250" y="262" width="18" height="10" fill="#77706f"/>
-      <rect x="400" y="220" width="16" height="10" fill="#4b3626"/>
-      <use href="#tree" x="150" y="196"/>
-      <use href="#tree" x="490" y="196"/>
-      <rect x="236" y="150" width="8" height="46" fill="#5c3e22"/>
-      <rect x="194" y="126" width="92" height="34" rx="3" fill="#3e2914"/>
-      <rect x="197" y="129" width="86" height="28" rx="2" fill="#97683f"/>
-      <rect x="197" y="142" width="86" height="2" fill="#7a5230"/>
-      <text x="240" y="149" text-anchor="middle" font-family="Fredoka, sans-serif" font-size="15" font-weight="700" fill="#fff" stroke="#000" stroke-width="3" paint-order="stroke">BUILDS</text>
-      <rect x="298" y="186" width="44" height="8" fill="#5c3e22"/>
-      <rect x="306" y="180" width="28" height="8" fill="#7a5533"/>
-      <rect x="312" y="160" width="16" height="22" fill="#f39a3d"/>
-      <rect x="316" y="150" width="8" height="14" fill="#ffd257"/>
-      <rect x="306" y="168" width="6" height="12" fill="#e0602e"/>
-      <rect x="328" y="166" width="6" height="14" fill="#e0602e"/>
-      <rect x="400" y="140" width="24" height="56" fill="#8a8590"/>
-      <rect x="400" y="140" width="7" height="56" fill="#a19ca6"/>
-      <rect x="396" y="134" width="32" height="8" fill="#6f6a76"/>
-      <rect x="405" y="114" width="14" height="18" fill="#9ae6d8"/>
-      <rect x="405" y="114" width="5" height="18" fill="#d8fff8"/>
-    </svg>
+    
   </div>
 </section>
 
 <main id="app" class="wrap"></main>
 
+<section class="band">
+  <div class="wrap bandin">
+    <img class="blogo2" src="assets/logo.webp" alt="" width="393" height="406" loading="lazy">
+    <div><p class="bandt stroke" data-i18n="playBand">Hunt monsters on sky islands, collect cards and take down world bosses with friends.</p>
+    <a class="btn green" href="https://www.roblox.com/games/117483759937632" target="_blank" rel="noopener" data-i18n="play">Play on Roblox</a></div>
+  </div>
+</section>
 <footer class="foot">
   <div class="wrap"><p data-i18n="footer">Community build board for Hunting Together RPG on Roblox. Item and skill data from the game.</p></div>
 </footer>
@@ -132,7 +57,7 @@
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
 <script src="config.js"></script>
-<script src="game-data.js?v=3"></script>
-<script src="app.js?v=3"></script>
+<script src="game-data.js?v=4"></script>
+<script src="app.js?v=4"></script>
 </body>
 </html>
