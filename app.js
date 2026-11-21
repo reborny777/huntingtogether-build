@@ -16,7 +16,7 @@ const SLOT_L = ['Helm','Weapon','Cloak','Ring'], SLOT_R = ['Mask','Armor','Boots
 const SLOT_NAME = {Weapon:'Weapon', Helm:'Helm', Mask:'Mask', Armor:'Armor', Cloak:'Cloak', Boots:'Boots', Ring:'Ring 1', Ring2:'Ring 2'};
 const BAG_TABS = ['Weapon','Helm','Mask','Armor','Cloak','Boots','Ring'];
 const kindOf = s => s === 'Ring2' ? 'Ring' : s;
-const BAR_SIZE = 9, MAX_TAGS = 6, PAGE = 24;
+const BAR_SIZE = 8, MAX_TAGS = 6, PAGE = 24;
 const TAGS = ['Solo','Party','Boss','Farming','AoE','Single Target','Tank','Support','Budget','Endgame'];
 const CLASSES = G ? G.classes.map(c => ({k:c.name, c:c.color, id:c.id})) : [];
 const CLS = G ? Object.fromEntries(G.classes.map(c => [c.name, c])) : {};

@@ -26,7 +26,7 @@ en: {
   stArrow: 'A flashing <b>yellow arrow</b> over your head means you have points to spend. Tap it.',
   base: {
     STR:['Strength','Melee ATK for swords, knives, katanas, hammers and fists.'],
-    AGI:['Agility','Attack speed (ASPD). Speeds attacks 4× more than DEX does.'],
+    AGI:['Agility','Attack speed (ASPD) and dodge (FLEE). Speeds attacks 4× more than DEX does.'],
     VIT:['Vitality','+1% Max HP per point and faster HP recovery.'],
     INT:['Intelligence','Spell power (MATK), +1% Max SP per point, SP recovery and magic defense.'],
     DEX:['Dexterity','Bow ATK and faster spell casting. A little attack speed.'],
@@ -51,7 +51,7 @@ en: {
     MaxSP:['Max SP','Mana for skills. Level + INT.'],
     DEF:['DEF','Cuts physical damage you take.'],
     MDEF:['MDEF','Cuts magic damage you take.'],
-    FLEE:['FLEE','Dodge normal monster attacks (gear). Max 80%, halved vs bosses.'],
+    FLEE:['FLEE','Dodge normal monster attacks. From level, AGI and gear. Max 80%, halved vs big bosses, lower when 3+ monsters hit you.'],
     SpRegen:['SP Regen','SP you get back over time. INT and Max SP.'],
     SpellCRIT:['Spell Crit','Crit chance for magic skills: LUK + CRIT from gear, max 100%.'],
   },
@@ -112,14 +112,16 @@ en: {
   rules: [
     'Attack options only roll on weapons and rings, defense options only on armor.',
     'Magic gear never rolls ATK, physical gear never rolls MATK.',
-    'Damage Reduction only rolls on cloaks and boots.',
   ],
   refT: 'Refine (+1 to +10)',
-  refP: 'Refine at the Blacksmith to make an item stronger. A fail drops it by 1. The higher the refine, the more your weapon glows.',
+  refP: 'Refine at the Blacksmith. Each + adds part of the item\'s main stat on top — +10 doubles it.',
   refChance: 'success',
-  refNote: 'Costs Gold — the first step is 1,000 Gold and it climbs from +5. Refined gear is locked so you cannot sell it by mistake.',
+  refNote: 'Each try costs Gold and 1 Refine Stone. The price climbs with the + level and the item tier (armor costs 40% less). Glow from +5, aura from +7, big aura at +10.',
+  refBonus: 'main stat', refStones: [['blacksmith','Protection Stone','Stops the −1 when a try fails (1 per failed try).'],['diamond','Lucky Stone','+10% chance for that try (Tier VI ×1.25).']],
+  redT: 'Tier VI (red) gear', redP: 'Uses Mythic Refine Stones and Mythic Guard Stones, with its own lower chances:',
+  rerTierT: 'Reroll price by tier',
   rerT: 'Reroll',
-  rerP: 'Don\'t like the random lines? Reroll them at <b>Smith Mira</b> (5,000 – 100,000 Gold by tier). Lock up to 2 lines with Lock Charms. The special line never changes.',
+  rerP: 'Reroll the random lines at the <b>Blacksmith</b>. Lock up to 2 lines with Lock Charms (1 per locked line each reroll). The special line never changes.',
   // cards
   cLead: 'Monsters drop cards. Put them in card slots for extra stats and special effects.',
   cShort: '8 card slots open as you level. Boss cards are rare and each one can only be used once.',
@@ -137,7 +139,7 @@ en: {
   sShort: '70 points = 7 skills at max. New skills unlock as you level up.',
   sArrow: 'A <b>blue arrow</b> means you have skill points to spend. Don\'t forget them!',
   sFacts: [
-    ['Skill bar','9 skill slots on your skill bar.'],
+    ['Skill bar','8 skill slots on your skill bar (keys 1–8).'],
     ['AoE size','Area skills grow from 55% size at Lv.1 to 100% at Lv.10.'],
     ['Passives','Passive skills work all the time — no slot needed.'],
   ],
@@ -212,7 +214,7 @@ th: {
   stArrow: 'เห็น<b>ลูกศรสีเหลือง</b>กะพริบเหนือหัว = มีแต้มสเตตัสรออยู่ กดเพื่ออัปได้เลย',
   base: {
     STR:['พลัง','ATK สายประชิด ดาบ มีด คาตานะ ค้อน และหมัด'],
-    AGI:['ความว่องไว','ความเร็วโจมตี (ASPD) เพิ่มความเร็วได้มากกว่า DEX 4 เท่า'],
+    AGI:['ความว่องไว','ความเร็วโจมตี (ASPD) และการหลบ (FLEE) เพิ่มความเร็วได้มากกว่า DEX 4 เท่า'],
     VIT:['ความอึด','HP สูงสุด +1% ต่อแต้ม และฟื้น HP เร็วขึ้น'],
     INT:['สติปัญญา','พลังเวท (MATK) SP สูงสุด +1% ต่อแต้ม ฟื้น SP และกันเวท'],
     DEX:['ความแม่นยำ','ATK สายธนู และร่ายเวทเร็วขึ้น เพิ่มความเร็วโจมตีนิดหน่อย'],
@@ -237,7 +239,7 @@ th: {
     MaxSP:['SP สูงสุด','มานาสำหรับใช้สกิล มาจากเลเวล + INT'],
     DEF:['DEF','ลดดาเมจกายภาพที่เราโดน'],
     MDEF:['MDEF','ลดดาเมจเวทที่เราโดน'],
-    FLEE:['FLEE','หลบการโจมตีปกติของมอน (จากอุปกรณ์) สูงสุด 80% เจอบอสเหลือครึ่ง'],
+    FLEE:['FLEE','หลบการโจมตีปกติของมอน มาจากเลเวล AGI และอุปกรณ์ สูงสุด 80% เจอบอสใหญ่เหลือครึ่ง โดนรุม 3 ตัวขึ้นไปจะหลบยากขึ้น'],
     SpRegen:['ฟื้น SP','SP ที่ฟื้นเองตามเวลา มาจาก INT และ SP สูงสุด'],
     SpellCRIT:['คริเวท','โอกาสคริของสกิลเวท: LUK + CRIT จากอุปกรณ์ สูงสุด 100%'],
   },
@@ -296,14 +298,16 @@ th: {
   rules: [
     'ออปชันโจมตีออกเฉพาะอาวุธกับแหวน ออปชันป้องกันออกเฉพาะเกราะ',
     'ของสายเวทไม่มี ATK ของสายกายภาพไม่มี MATK',
-    'ลดดาเมจ (Damage Reduction) ออกเฉพาะผ้าคลุมกับรองเท้า',
   ],
   refT: 'ตีบวก (+1 ถึง +10)',
-  refP: 'ตีบวกที่ช่างตีเหล็กให้ไอเทมแรงขึ้น ถ้าพลาดจะลด 1 ขั้น ยิ่งตีบวกสูง อาวุธยิ่งเรืองแสง',
+  refP: 'ตีบวกที่ช่างตีเหล็ก บวกแต่ละขั้นเพิ่มค่าหลักของไอเทมเป็น % — +10 = ค่าหลัก ×2',
   refChance: 'โอกาสสำเร็จ',
-  refNote: 'ใช้ Gold — ขั้นแรก 1,000 Gold และแพงขึ้นตั้งแต่ +5 ของที่ตีบวกแล้วจะล็อกไว้ กันขายพลาด',
+  refNote: 'ตีแต่ละครั้งใช้ Gold กับหินตีบวก 1 ก้อน ราคาแพงขึ้นตามขั้นบวกและ Tier (เกราะถูกกว่า 40%) เรืองแสงตั้งแต่ +5 มีออร่าตั้งแต่ +7 ออร่าใหญ่ที่ +10',
+  refBonus: 'ค่าหลัก', refStones: [['blacksmith','หินกันลด (Protection Stone)','กันไม่ให้ลด 1 ขั้นตอนตีพลาด (ใช้ 1 ก้อนต่อครั้งที่พลาด)'],['diamond','หินนำโชค (Lucky Stone)','โอกาสสำเร็จ +10% ในครั้งนั้น (Tier VI ×1.25)']],
+  redT: 'ของ Tier VI (สีแดง)', redP: 'ใช้หินตีบวก Mythic และหินกัน Mythic และมีโอกาสสำเร็จของตัวเองที่ต่ำกว่า:',
+  rerTierT: 'ราคาสุ่มออปชันตาม Tier',
   rerT: 'สุ่มออปชันใหม่',
-  rerP: 'ไม่ชอบออปชันสุ่ม? สุ่มใหม่ได้ที่ <b>Smith Mira</b> (5,000 – 100,000 Gold ตาม Tier) ล็อกออปชันได้สูงสุด 2 บรรทัดด้วย Lock Charm ส่วนออปชันพิเศษไม่เปลี่ยน',
+  rerP: 'สุ่มออปชันใหม่ได้ที่<b>ช่างตีเหล็ก</b> ล็อกได้สูงสุด 2 บรรทัดด้วย Lock Charm (1 ชิ้นต่อบรรทัดต่อครั้ง) ออปชันพิเศษไม่เปลี่ยน',
   cLead: 'มอนดรอปการ์ด เอาไปใส่ช่องการ์ดเพื่อเพิ่มค่าสเตตัสและเอฟเฟกต์พิเศษ',
   cShort: 'ช่องการ์ด 8 ช่องเปิดตามเลเวล การ์ดบอสหายากและใส่ใบเดียวกันได้แค่ 1 ใบ',
   cSlotsT: 'ช่องการ์ด',
@@ -319,7 +323,7 @@ th: {
   sShort: '70 แต้ม = อัปสกิลเต็มได้ 7 สกิล สกิลใหม่ปลดล็อกตามเลเวล',
   sArrow: 'เห็น<b>ลูกศรสีฟ้า</b> = มีแต้มสกิลรออยู่ อย่าลืมกดอัป!',
   sFacts: [
-    ['แถบสกิล','ใส่สกิลในแถบได้ 9 ช่อง'],
+    ['แถบสกิล','ใส่สกิลในแถบได้ 8 ช่อง (ปุ่ม 1–8)'],
     ['ขนาดวงสกิล','สกิลวงกว้าง 55% ที่ Lv.1 และเต็ม 100% ที่ Lv.10'],
     ['พาสซีฟ','สกิลพาสซีฟทำงานตลอด ไม่ต้องใส่ช่อง'],
   ],
@@ -387,13 +391,13 @@ Object.assign(W.en, {
   more: 'All the details', back: 'Back to the hunter', next: 'Next', prev: 'Back',
   hint: {stats:'Where your points go', gear:'Weapon, armor, rings', refine:'Make gear stronger', cards:'Monster cards', elements:'Who beats who', skills:'Points & passives', classes:'10 classes', status:'Stun, burn, poison…', tips:'Small tricks'},
   keys: {
-    stats: [['arrow_stats','Get points','Every level gives stat points. Tap the yellow arrow to spend them.'],['STR','Focus 2–3 stats','Follow your class\'s main stats. Nobody can max everything.'],['ATK','Stats become power','STR / DEX → ATK · INT → MATK · VIT → HP · AGI → speed · LUK → crit.']],
+    stats: [['menu_stat','{pts} points by Lv.99','Every level gives stat points. Each stat goes up to 99.'],['STR','Cost rises every 10','+1 costs 2 points at first, then 1 more every 10 points — maxing one stat takes {one}.'],['ATK','Stats become power','STR / DEX → ATK · INT → MATK · VIT → HP · AGI → speed · LUK → crit.']],
     gear: [['menu_equip','8 slots','1 weapon, 5 armor pieces and 2 rings.'],['diamond','Color = tier','Grey → green → blue → purple → orange → red. Higher tier is stronger but needs a higher level.'],['swords','Read the lines','A main stat, random lines, and one special line from Tier II up.']],
-    refine: [['blacksmith','Refine +1 to +10','Each + makes the item stronger, and your weapon glows brighter.'],['weak','Fail = −1','+1 to +4 never fail. From +5 the chance drops, and a fail takes 1 level off.'],['diamond','Reroll lines','Smith Mira rerolls random lines. Lock up to 2. The special line never changes.']],
+    refine: [['blacksmith','+10 = main stat ×2','+1 adds 8% of the main stat, +5 adds 42%, +10 adds 100%.'],['weak','Fail from +5 = −1','+1 to +4 always work. From +5 a fail drops the item 1 level, unless you use a Protection Stone.'],['swords','Reroll lines','Reroll random lines at the Blacksmith. Lock up to 2. The special line never changes.']],
     cards: [['card','8 card slots','Slots open at Lv.{lv}.'],['menu_index','Color = monster','Grey normal · green Leader · blue/purple Mini Boss · gold Boss · red World Boss.'],['swords','Boss cards once','Mini Boss, Boss and red cards can only be equipped once. Normal ones stack.']],
     elements: [['wind','4 elements in a loop','Wind → Water → Fire → Earth → Wind. Each one beats the next.'],['fire','125% or 75%','Hit an element you beat for 125%. Hit one that beats you for only 75%.'],['comboburn','Mix for combos','Two different elements on one monster within 6 s set off a combo.']],
-    skills: [['arrow_skills','Blue arrow','1 skill point per level up to Lv.70. Tap the blue arrow to spend it.'],['INT','7 skills at max','Each skill goes to Lv.10, so 70 points max out 7 skills.'],['menu_job','Extra Passive','From Lv.70 borrow passives from other classes you raised to Lv.99.']],
-    classes: [['menu_job','10 classes','Each class has its own weapon and play style.'],['menu_map','Master Class','Change class at the Master Class in the village center.'],['menu_party','Everyone fits','Every class can solo, and every class is welcome in a party.']],
+    skills: [['arrow_skills','1 point per level','You get 1 skill point each level, up to 70 points at Lv.70.'],['INT','7 skills at max','Each skill goes to Lv.10, so 70 points max out 7 skills.'],['menu_job','Extra Passive','From Lv.70 borrow passives from other classes you raised to Lv.99.']],
+    classes: [['menu_job','10 classes','Each class has its own weapon and play style.'],['menu_map','Master Class','Change class at the Master Class in the village center.']],
     status: [['stun','Shown overhead','The effect icon pops up above the monster\'s head.'],['provoke','Bosses resist','Leaders ignore Stun and Freeze. Big bosses ignore Slow.'],['comboburn','Combos add more','Element combos add Freeze, Combo Fire and Lava.']],
   },
 });
@@ -403,13 +407,13 @@ Object.assign(W.th, {
   more: 'ดูรายละเอียดทั้งหมด', back: 'กลับไปที่ตัวละคร', next: 'ถัดไป', prev: 'ก่อนหน้า',
   hint: {stats:'แต้มลงตรงไหนดี', gear:'อาวุธ ชุด แหวน', refine:'ทำของให้แรงขึ้น', cards:'การ์ดมอนสเตอร์', elements:'ธาตุไหนชนะธาตุไหน', skills:'แต้มสกิลและพาสซีฟ', classes:'10 อาชีพ', status:'สตัน ไฟไหม้ พิษ…', tips:'ลูกเล่นเล็ก ๆ'},
   keys: {
-    stats: [['arrow_stats','ได้แต้ม','ทุกเลเวลได้แต้มสเตตัส กดลูกศรเหลืองเพื่ออัป'],['STR','เน้น 2–3 ค่า','อัปตามค่าหลักของอาชีพ ไม่มีใครอัปเต็มทุกค่าได้'],['ATK','สเตตัสกลายเป็นพลัง','STR / DEX → ATK · INT → MATK · VIT → HP · AGI → ความเร็ว · LUK → คริ']],
+    stats: [['menu_stat','{pts} แต้มที่ Lv.99','ทุกเลเวลได้แต้มสเตตัส แต่ละค่าอัปได้สูงสุด 99'],['STR','ยิ่งสูงยิ่งแพง','+1 ใช้ 2 แต้มตอนแรก แล้วเพิ่มอีก 1 ทุก 10 ค่า — อัปค่าเดียวจนเต็มใช้ {one} แต้ม'],['ATK','สเตตัสกลายเป็นพลัง','STR / DEX → ATK · INT → MATK · VIT → HP · AGI → ความเร็ว · LUK → คริ']],
     gear: [['menu_equip','8 ช่อง','อาวุธ 1 เกราะ 5 และแหวน 2'],['diamond','สี = Tier','เทา → เขียว → ฟ้า → ม่วง → ส้ม → แดง Tier สูงยิ่งแรง แต่ต้องเลเวลสูงขึ้น'],['swords','อ่านออปชัน','ค่าหลัก ออปชันสุ่ม และออปชันพิเศษ 1 บรรทัดตั้งแต่ Tier II']],
-    refine: [['blacksmith','ตีบวก +1 ถึง +10','บวกแต่ละขั้นทำให้ของแรงขึ้น และอาวุธเรืองแสงขึ้น'],['weak','พลาด = −1','+1 ถึง +4 ไม่มีพลาด ตั้งแต่ +5 โอกาสลดลง ถ้าพลาดจะลด 1 ขั้น'],['diamond','สุ่มออปชันใหม่','Smith Mira สุ่มออปชันใหม่ได้ ล็อกได้ 2 บรรทัด ออปชันพิเศษไม่เปลี่ยน']],
+    refine: [['blacksmith','+10 = ค่าหลัก ×2','+1 เพิ่ม 8% ของค่าหลัก, +5 เพิ่ม 42%, +10 เพิ่ม 100%'],['weak','พลาดตั้งแต่ +5 = −1','+1 ถึง +4 สำเร็จเสมอ ตั้งแต่ +5 ถ้าพลาดจะลด 1 ขั้น ยกเว้นใช้หินกันลด'],['swords','สุ่มออปชันใหม่','สุ่มออปชันใหม่ที่ช่างตีเหล็ก ล็อกได้ 2 บรรทัด ออปชันพิเศษไม่เปลี่ยน']],
     cards: [['card','ช่องการ์ด 8 ช่อง','เปิดที่ Lv.{lv}'],['menu_index','สี = ประเภทมอน','เทา มอนทั่วไป · เขียว Leader · ฟ้า/ม่วง มินิบอส · ทอง บอส · แดง บอสโลก'],['swords','การ์ดบอสใส่ใบเดียว','การ์ดมินิบอส บอส และการ์ดแดงใส่ได้ใบละ 1 ใบ การ์ดทั่วไปใส่ซ้ำได้']],
     elements: [['wind','4 ธาตุวนเป็นวง','ลม → น้ำ → ไฟ → ดิน → ลม แต่ละธาตุชนะธาตุถัดไป'],['fire','125% หรือ 75%','ตีธาตุที่เราชนะได้ 125% ตีธาตุที่ชนะเราได้แค่ 75%'],['comboburn','ผสมให้เกิดคอมโบ','ตี 2 ธาตุต่างกันใส่มอนตัวเดียวภายใน 6 วินาที จะเกิดคอมโบ']],
-    skills: [['arrow_skills','ลูกศรฟ้า','ได้ 1 แต้มสกิลต่อเลเวลจนถึง Lv.70 กดลูกศรฟ้าเพื่ออัป'],['INT','อัปเต็มได้ 7 สกิล','แต่ละสกิลสูงสุด Lv.10 แต้ม 70 แต้มจึงอัปเต็มได้ 7 สกิล'],['menu_job','Extra Passive','ตั้งแต่ Lv.70 ยืมพาสซีฟของอาชีพอื่นที่เล่นถึง Lv.99 มาใช้ได้']],
-    classes: [['menu_job','10 อาชีพ','แต่ละอาชีพมีอาวุธและสไตล์ของตัวเอง'],['menu_map','Master Class','เปลี่ยนอาชีพได้ที่ Master Class กลางหมู่บ้าน'],['menu_party','เล่นได้ทุกแบบ','ทุกอาชีพเล่นคนเดียวได้ และเข้าปาร์ตี้ได้ทุกอาชีพ']],
+    skills: [['arrow_skills','1 แต้มต่อเลเวล','ได้แต้มสกิลเลเวลละ 1 แต้ม รวม 70 แต้มที่ Lv.70'],['INT','อัปเต็มได้ 7 สกิล','แต่ละสกิลสูงสุด Lv.10 แต้ม 70 แต้มจึงอัปเต็มได้ 7 สกิล'],['menu_job','Extra Passive','ตั้งแต่ Lv.70 ยืมพาสซีฟของอาชีพอื่นที่เล่นถึง Lv.99 มาใช้ได้']],
+    classes: [['menu_job','10 อาชีพ','แต่ละอาชีพมีอาวุธและสไตล์ของตัวเอง'],['menu_map','Master Class','เปลี่ยนอาชีพได้ที่ Master Class กลางหมู่บ้าน']],
     status: [['stun','ขึ้นเหนือหัว','ไอคอนสถานะจะขึ้นเหนือหัวมอน'],['provoke','บอสต้านบางอย่าง','Leader ไม่ติดสตันกับแช่แข็ง บอสใหญ่ไม่ติดช้า'],['comboburn','คอมโบเพิ่มสถานะ','คอมโบธาตุทำให้ติดแช่แข็ง ไฟคอมโบ และลาวา']],
   },
 });
@@ -425,7 +429,6 @@ const TOPICS = [
   {id:'skills',   ic:'arrow_skills',c:'#5cc8ff', side:'r', pt:[0.86,0.50]},
   {id:'elements', ic:'fire',        c:'#7ee07a', side:'r', pt:[0.64,0.62]},
   {id:'classes',  ic:'menu_job',    c:'#ffad5c', side:'r', pt:[0.62,0.88]},
-  {id:'tips',     ic:'auto',        c:'#6fe0c8', side:'b', pt:[0.46,0.98]},
 ];
 const ORDER = TOPICS.map(t => t.id);
 const EL = ['wind','water','fire','earth'];             // cycle order: each beats the next
@@ -473,8 +476,8 @@ function build(ctx){
       <div class="gbox"><h3>${L.defT}</h3><p class="muted sm">${L.defP}</p>
         <label class="gslide"><span>${img('DEF','gi xs')} DEF <b id="gDef">${STATIC.def}</b></span><input type="range" min="0" max="600" step="10" value="${STATIC.def}" data-g="def"></label>
         <div class="gmeter"><i id="gDefBar"></i><b id="gDefPct">0%</b></div><p class="muted sm">${L.defCut}</p></div>
-      <div class="gbox">${tip('auto', L.autoUp)}
-        <details class="gform"><summary>${L.formulas}</summary><ul>${L.f.map(x => `<li>${x}</li>`).join('')}</ul></details></div>
+      <div class="gbox">
+        <details class="gform" open><summary>${L.formulas}</summary><ul>${L.f.map(x => `<li>${x}</li>`).join('')}</ul></details></div>
     </div>`};
 
   // ---------- elements ----------
@@ -514,7 +517,7 @@ function build(ctx){
         </tbody></table></div>
         <p class="muted sm">${L.noCombo}</p></div>
     </div>
-    ${tip('menu_party', L.partyEl)}`};
+`};
 
   // ---------- gear + refine ----------
   const byTierSlot = (slot, tier, job) => G.items.find(i => i.slot === slot && i.tier === tier && (slot !== 'Weapon' || !job || (i.jobs || []).includes(job)));
@@ -549,13 +552,22 @@ function build(ctx){
         <div class="glines">${linesBy.map(([t, n, s]) => `<div style="--tc:${G.tiers[t - 1].color}"><b>${G.tiers[t - 1].roman}</b><span>${'<i></i>'.repeat(n)}${s ? '<i class="sp"></i>' : ''}</span><small>${n} ${n === 1 ? L.line1 : L.lines}${s ? ' ' + L.special : ''}</small></div>`).join('')}</div>
         <ul class="gchk">${L.rules.map(x => `<li>${x}</li>`).join('')}</ul></div>
     </div>`};
+  const RB = G.refineBonus || [8,16,24,32,42,52,62,74,86,100], RED = [100,90,80,70,40,25,20,10,5,3], RER = [5000,15000,40000,70000,100000,100000];
   T.refine = {lead:L.refP,
     vis:`<div class="gbox"><h3>${img('blacksmith','gi sm')} ${L.refT}</h3>
-      <div class="gref">${REF.map((p, i) => `<div class="gr"><b>+${i + 1}</b><span><i style="height:${p}%;--h:${p}"></i></span><em>${p}%</em></div>`).join('')}</div>
-      <p class="muted sm">${L.refNote}</p></div>`,
-    more:`<div class="gbox"><h3>${img('blacksmith','gi sm')} ${L.rerT}</h3><p>${L.rerP}</p>
-      <ul class="grer">${(ex.pool || []).slice(0, ex.lines).map((k, i) => `<li class="${i < 2 ? 'lk' : 'rr'}"><span>${esc(H.labelName(k))} +${rngTxt(G.ranges.stat[ex.tier - 1])}</span><b>${i < 2 ? L.locked : L.rerolled}</b></li>`).join('')}
-        <li class="sp"><span>${esc(H.labelName(sp))} +${rngTxt(G.ranges.special[sp][ex.tier - 1])}%</span><b>${L.kept}</b></li></ul></div>`};
+      <div class="gref">${REF.map((p, i) => `<div class="gr${i >= 4 ? ' glow' : ''}${i >= 6 ? ' aura' : ''}"><b>+${i + 1}</b><span><i style="height:${p}%;--h:${p}"></i></span><em>${p}%</em><small>+${RB[i]}%</small></div>`).join('')}</div>
+      <div class="glegend"><span><i class="lg1"></i>${L.refChance}</span><span><small>+%</small> ${L.refBonus}</span></div>
+      <p class="muted sm">${L.refNote}</p>
+      <div class="gstones">${L.refStones.map(([ic, n, d]) => `<div class="gd">${img(ic,'gi')}<div><b>${n}</b><p>${d}</p></div></div>`).join('')}</div></div>`,
+    more:`<div class="gtwo">
+      <div class="gbox"><h3>${img('blacksmith','gi sm')} ${L.rerT}</h3><p>${L.rerP}</p>
+        <ul class="grer">${(ex.pool || []).slice(0, ex.lines).map((k, i) => `<li class="${i < 2 ? 'rlk' : 'rr'}"><span>${esc(H.labelName(k))} +${rngTxt(G.ranges.stat[ex.tier - 1])}</span><b>${i < 2 ? L.locked : L.rerolled}</b></li>`).join('')}
+          <li class="sp"><span>${esc(H.labelName(sp))} +${rngTxt(G.ranges.special[sp][ex.tier - 1])}%</span><b>${L.kept}</b></li></ul>
+        <h3 class="gsub sm">${L.rerTierT}</h3>
+        <div class="gprice">${G.tiers.map((t, i) => `<div style="--tc:${t.color}"><b>${t.roman}</b><span>${nf(RER[i])}</span></div>`).join('')}</div></div>
+      <div class="gbox"><h3>${L.redT}</h3><p class="muted sm">${L.redP}</p>
+        <div class="gref red">${RED.map((p, i) => `<div class="gr"><b>+${i + 1}</b><span><i style="height:${p}%;--h:${p}"></i></span><em>${p}%</em></div>`).join('')}</div></div>
+    </div>`};
 
   // ---------- cards ----------
   const pick = r => G.cards.find(c => c.r === r && c.art && !/goblin/.test(c.id)) || G.cards.find(c => c.r === r);
@@ -612,7 +624,6 @@ function render(ctx){
         <div class="hub-col l">${side('l').map((t, i) => bubble(t, L, i)).join('')}</div>
         <div class="hub-col r">${side('r').map((t, i) => bubble(t, L, i + 4)).join('')}</div>
       </div>
-      <div class="hub-foot">${side('b').map((t, i) => bubble(t, L, i + 8)).join('')}</div>
     </div>
     <div id="gPanel" class="gpanel" hidden></div>
     <div class="gend"><img src="assets/logo.webp" alt="" loading="lazy"><div><h2 class="stroke">${L.endT}</h2><p>${L.endP}</p>
@@ -659,6 +670,7 @@ function markOn(){
 function open(sec, smooth){
   if (!CTX || !BUILT) return;
   const {app, G, H, lang} = CTX, {T, L} = BUILT, panel = app.querySelector('#gPanel');
+  const nf = n => n.toLocaleString(lang === 'th' ? 'th-TH' : 'en-US');
   const t = TOPICS.find(x => x.id === sec);
   app.dataset.gcur = t ? t.id : ''; markOn();
   if (!t) { panel.hidden = true; panel.innerHTML = ''; scrollTo({top:0, behavior: smooth ? 'smooth' : 'auto'}); return; }
@@ -668,13 +680,13 @@ function open(sec, smooth){
   panel.style.setProperty('--c', t.c);
   panel.innerHTML = `
     <header class="gp-h"><span class="gp-i">${img(t.ic, 'gi big')}</span><div><h2 class="stroke">${L.nav[t.id]}</h2><p>${d.lead}</p></div></header>
-    ${keys.length ? `<ol class="gkeys">${keys.map(([ic, n, x], k) => `<li><span class="gk-n stroke">${k + 1}</span>${img(ic, 'gi lg')}<div><b>${n}</b><p>${x.replace('{lv}', lvList)}</p></div></li>`).join('')}</ol>` : ''}
+    ${keys.length ? `<ol class="gkeys">${keys.map(([ic, n, x], k) => `<li><span class="gk-n stroke">${k + 1}</span>${img(ic, 'gi lg')}<div><b>${n.replace('{pts}', nf(H.totalPts(G.maxLevel)))}</b><p>${x.replace('{lv}', lvList).replace('{one}', nf(H.costTo(G.maxStat))).replace('{pts}', nf(H.totalPts(G.maxLevel)))}</p></div></li>`).join('')}</ol>` : ''}
     <div class="gp-vis">${d.vis}</div>
     ${d.more ? `<details class="gmore"><summary><span>${L.more}</span></summary><div class="gmore-in">${d.more}</div></details>` : ''}
     <nav class="gp-nav">
       <a class="gpn" href="#guide-${prev.id}">${img(prev.ic, 'gi sm')}<span><i>${L.prev}</i>${L.nav[prev.id]}</span></a>
-      <a class="btn sm grey" href="#guide">${L.back}</a>
-      ${['stats','gear','refine','cards','skills'].includes(t.id) ? `<a class="btn sm green" href="#new">${L.tryIt}</a>` : ''}
+      <span class="gp-btns"><a class="btn sm grey" href="#guide">${L.back}</a>
+      ${['stats','gear','refine','cards','skills'].includes(t.id) ? `<a class="btn sm green" href="#new">${L.tryIt}</a>` : ''}</span>
       <a class="gpn nx" href="#guide-${next.id}"><span><i>${L.next}</i>${L.nav[next.id]}</span>${img(next.ic, 'gi sm')}</a>
     </nav>`;
   panel.hidden = false;
