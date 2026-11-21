@@ -58,7 +58,7 @@ const keyInfo = k => KEYS[k] || (/^[1-8]$/.test(k) ? KEYS['1–8'] : /^[WASD]$/.
 const W = {
 en: {
   title: 'Controls & Tricks', sub: 'Everything the game can do for you, and the fastest way to do it on PC and on mobile.',
-  tabSys: 'Game systems', tabPlay: 'Controls & tricks',
+  tabSys: 'Game systems', tabSkills: 'Skill Book', tabPlay: 'Controls & tricks',
   pc: 'PC', mob: 'Mobile', showFor: 'Show tricks for',
   keysT: 'Keyboard map', keysP: 'Default keys. Change any of them in Settings › Hotkeys.',
   legend: {c:'Fight', m:'Move', w:'Windows'},
@@ -81,7 +81,7 @@ en: {
 },
 th: {
   title: 'ปุ่มลัดและทริค', sub: 'ทุกอย่างที่เกมทำให้เราได้ และวิธีที่เร็วที่สุด ทั้งบนคอมและมือถือ',
-  tabSys: 'ระบบในเกม', tabPlay: 'ปุ่มลัดและทริค',
+  tabSys: 'ระบบในเกม', tabSkills: 'คัมภีร์สกิล', tabPlay: 'ปุ่มลัดและทริค',
   pc: 'คอม', mob: 'มือถือ', showFor: 'แสดงทริคสำหรับ',
   keysT: 'ปุ่มคีย์บอร์ด', keysP: 'ปุ่มเริ่มต้นของเกม เปลี่ยนปุ่มไหนก็ได้ที่ ตั้งค่า › Hotkeys',
   legend: {c:'ต่อสู้', m:'เดินทาง', w:'หน้าต่าง'},
@@ -243,7 +243,7 @@ function render(ctx){
   const list = T.filter(t => !t.dev || t.dev === dev);
   app.innerHTML = `<div class="guide play" data-dev="${dev}">
     <div class="hub-head"><h1 class="stroke">${L.title}</h1><p>${L.sub}</p></div>
-    <nav class="gtabs"><a href="#guide">${L.tabSys}</a><a class="on" href="#play" aria-current="page">${L.tabPlay}</a></nav>
+    <nav class="gtabs"><a href="#guide">${L.tabSys}</a><a href="#skills">${L.tabSkills}</a><a class="on" href="#play" aria-current="page">${L.tabPlay}</a></nav>
     <div class="devsw" role="radiogroup" aria-label="${L.showFor}"><span>${L.showFor}</span>
       <button type="button" role="radio" data-dev="pc" aria-checked="${dev === 'pc'}" class="${dev === 'pc' ? 'on' : ''}"><i class="dv-pc"></i>${L.pc}</button>
       <button type="button" role="radio" data-dev="mob" aria-checked="${dev === 'mob'}" class="${dev === 'mob' ? 'on' : ''}"><i class="dv-mob"></i>${L.mob}</button>

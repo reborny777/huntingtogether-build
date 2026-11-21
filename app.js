@@ -976,6 +976,8 @@ function applyI18n(){
   document.documentElement.lang = lang;
   $$('[data-i18n]').forEach(el => { el.textContent = t(el.dataset.i18n); });
   const lb = $('#langBtn'); lb.hidden = !thOK; lb.textContent = lang === 'th' ? 'EN' : 'ไทย';
+  const fl = $('#footLang');
+  if (fl && window.HT_SKILLS) { fl.innerHTML = window.HT_SKILLS.langPicker(lang === 'th' ? 'อ่านเว็บนี้เป็นภาษาอื่น' : 'Read this site in another language', ''); window.HT_SKILLS.wireLangPicker(fl); }
 }
 // ---------- hunter's guide (guide.js) ----------
 function guideScroll(sec){ if (window.HT_GUIDE) window.HT_GUIDE.open(sec, true); }
@@ -995,21 +997,31 @@ function viewPlay(sec){
   document.title = (lang === 'th' ? 'ปุ่มลัดและทริค' : 'Controls & Tricks') + ' · Hunting Together Builds';
   if (sec) requestAnimationFrame(() => window.HT_PLAY.open(sec));
 }
+function viewSkills(sec, keep){
+  $('#hero').hidden = true; document.body.classList.toggle('home', false);
+  if (!window.HT_SKILLS) { app.innerHTML = `<div class="empty"><p>${t('errLoad')}</p></div>`; return; }
+  const y = scrollY;
+  window.HT_SKILLS.render({G, lang, app, sec: sec || null, H:{esc, skillIcon}});
+  document.title = (lang === 'th' ? 'คัมภีร์สกิล' : 'Skill Book') + ' · Hunting Together Builds';
+  if (keep) { const bar = $('.sb-cls'); scrollTo(0, Math.min(y, bar ? bar.offsetTop - 70 : y)); }
+}
 function route(){
   const h = decodeURIComponent(location.hash.slice(1));
-  const next = h.startsWith('build-') ? 'detail' : h === 'new' ? 'new' : h.startsWith('edit-') ? 'edit' : (h === 'guide' || h.startsWith('guide-')) ? 'guide' : (h === 'play' || h.startsWith('play-')) ? 'play' : 'list';
+  const next = h.startsWith('build-') ? 'detail' : h === 'new' ? 'new' : h.startsWith('edit-') ? 'edit' : (h === 'guide' || h.startsWith('guide-')) ? 'guide' : (h === 'play' || h.startsWith('play-')) ? 'play' : (h === 'skills' || h.startsWith('skills-')) ? 'skills' : 'list';
   if (S.view === 'list' && next !== 'list') S.scrollY = scrollY;
   const wasGuide = S.view === 'guide' && S.guideLang === lang;
   const wasPlay = S.view === 'play' && S.guideLang === lang;
+  const wasSkills = S.view === 'skills';
   S.view = next;
-  if (next !== 'guide' && next !== 'play') document.title = 'Hunting Together Builds';
+  if (next !== 'guide' && next !== 'play' && next !== 'skills') document.title = 'Hunting Together Builds';
   if (next === 'guide' && wasGuide && $('.guide')) return guideScroll(h.slice(6));
   if (next === 'play' && wasPlay && $('.play') && window.HT_PLAY) return window.HT_PLAY.open(h.slice(5));
   if (next !== 'new' && next !== 'edit') S.edit = null;
   if (next === 'list') return viewList();
-  scrollTo(0, 0);
+  if (!(next === 'skills' && wasSkills)) scrollTo(0, 0);
   if (next === 'guide') return viewGuide(h.slice(6));
   if (next === 'play') return viewPlay(h.slice(5));
+  if (next === 'skills') return viewSkills(h.slice(7), wasSkills);
   if (next === 'detail') return viewDetail(h.slice(6));
   if (next === 'new') return viewEditor(null);
   return viewEditor(h.slice(5));
@@ -1018,10 +1030,10 @@ async function init(){
   applyI18n();
   if (!G) { app.innerHTML = `<div class="empty"><p>${t('errConnect')}</p></div>`; return; }
   // the guide needs no database: show it right away
-  if (/^#(guide|play)(-|$)/.test(location.hash)) route();
+  if (/^#(guide|play|skills)(-|$)/.test(location.hash)) route();
   if (CFG.SUPABASE_URL && CFG.SUPABASE_ANON_KEY) {
     try { await loadScript(SUPA_CDN); S.api = SupaAPI(window.supabase.createClient(CFG.SUPABASE_URL, CFG.SUPABASE_ANON_KEY, {auth:{persistSession:true, autoRefreshToken:true}})); }
-    catch (e) { console.error(e); if (S.view !== 'guide' && S.view !== 'play') app.innerHTML = `<div class="empty"><p>${t('errConnect')}</p><button class="btn blue" onclick="location.reload()">${t('retry')}</button></div>`; return; }
+    catch (e) { console.error(e); if (S.view !== 'guide' && S.view !== 'play' && S.view !== 'skills') app.innerHTML = `<div class="empty"><p>${t('errConnect')}</p><button class="btn blue" onclick="location.reload()">${t('retry')}</button></div>`; return; }
   } else { S.api = DemoAPI(); $('#modeNote').hidden = false; }
   try { S.me = await S.api.me(false); S.mine = await S.api.myState(); } catch (e) { console.error(e); }
   route(); addEventListener('hashchange', () => route());

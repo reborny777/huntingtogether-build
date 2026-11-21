@@ -345,7 +345,7 @@ th: {
 // ---------- hub words ----------
 Object.assign(W.en, {
   hubSub: 'Tap a bubble around the hunter to learn that part of the game.',
-  tabSys: 'Game systems', tabPlay: 'Controls & tricks', playCta: 'Keyboard keys, mobile buttons and every Auto feature — PC and mobile.',
+  tabSys: 'Game systems', tabSkills: 'Skill Book', tabPlay: 'Controls & tricks', playCta: 'Keyboard keys, mobile buttons and every Auto feature — PC and mobile.',
   more: 'All the details', back: 'Back to the hunter', next: 'Next', prev: 'Back',
   hint: {stats:'Where your points go', gear:'Weapon, armor, rings', refine:'Make gear stronger', cards:'Monster cards', elements:'Who beats who', skills:'Points & passives', classes:'10 classes', status:'Stun, burn, poison…', },
   keys: {
@@ -361,7 +361,7 @@ Object.assign(W.en, {
 });
 Object.assign(W.th, {
   hubSub: 'กดบับเบิลรอบตัวนักล่า เพื่อดูว่าระบบนั้นในเกมทำงานยังไง',
-  tabSys: 'ระบบในเกม', tabPlay: 'ปุ่มลัดและทริค', playCta: 'ปุ่มคีย์บอร์ด ปุ่มบนมือถือ และระบบออโต้ทุกอย่าง ทั้งคอมและมือถือ',
+  tabSys: 'ระบบในเกม', tabSkills: 'คัมภีร์สกิล', tabPlay: 'ปุ่มลัดและทริค', playCta: 'ปุ่มคีย์บอร์ด ปุ่มบนมือถือ และระบบออโต้ทุกอย่าง ทั้งคอมและมือถือ',
   more: 'ดูรายละเอียดทั้งหมด', back: 'กลับไปที่ตัวละคร', next: 'ถัดไป', prev: 'ก่อนหน้า',
   hint: {stats:'แต้มลงตรงไหนดี', gear:'อาวุธ ชุด แหวน', refine:'ทำของให้แรงขึ้น', cards:'การ์ดมอนสเตอร์', elements:'ธาตุไหนชนะธาตุไหน', skills:'แต้มสกิลและพาสซีฟ', classes:'10 อาชีพ', status:'สตัน ไฟไหม้ พิษ…', },
   keys: {
@@ -574,7 +574,7 @@ function render(ctx){
   app.innerHTML = `<div class="guide">
     <div class="hub">
       <div class="hub-head"><h1 class="stroke">${L.title}</h1><p>${L.hubSub}</p></div>
-      <nav class="gtabs"><a class="on" href="#guide" aria-current="page">${L.tabSys}</a><a href="#play">${L.tabPlay}</a></nav>
+      <nav class="gtabs"><a class="on" href="#guide" aria-current="page">${L.tabSys}</a><a href="#skills">${L.tabSkills}</a><a href="#play">${L.tabPlay}</a></nav>
       <div class="hub-stage" id="hubStage">
         <svg class="hub-lines" id="hubLines" aria-hidden="true"></svg>
         <div class="hub-hero"><span class="hub-glow"></span><span class="hub-ground"></span><img id="hubHero" src="assets/hero.webp" alt="" width="493" height="630"></div>
@@ -644,6 +644,7 @@ function open(sec, smooth){
     <nav class="gp-nav">
       <a class="gpn" href="#guide-${prev.id}">${img(prev.ic, 'gi sm')}<span><i>${L.prev}</i>${L.nav[prev.id]}</span></a>
       <span class="gp-btns"><a class="btn sm grey" href="#guide">${L.back}</a>
+      ${t.id === 'skills' || t.id === 'classes' ? `<a class="btn sm orange" href="#skills">${L.tabSkills}</a>` : ''}
       ${['stats','gear','refine','cards','skills'].includes(t.id) ? `<a class="btn sm green" href="#new">${L.tryIt}</a>` : ''}</span>
       <a class="gpn nx" href="#guide-${next.id}"><span><i>${L.next}</i>${L.nav[next.id]}</span>${img(next.ic, 'gi sm')}</a>
     </nav>`;
