@@ -27,7 +27,7 @@ function translateUrl(code){
 }
 function langPicker(label, note){
   return `<label class="lpick"><span><i class="globe"></i>${label}</span>
-    <select data-langpick><option value="">—</option>${LANGS.map(([c, n]) => `<option value="${c}">${n}</option>`).join('')}</select>
+    <select data-langpick translate="no"><option value="">—</option>${LANGS.map(([c, n]) => `<option value="${c}">${n}</option>`).join('')}</select>
     ${note ? `<small>${note}</small>` : ''}</label>`;
 }
 function wireLangPicker(root){
@@ -91,7 +91,7 @@ function render(ctx){
     if (ST.f !== 'all' && ST.f !== g) return '';
     const cdTxt = !cd ? '' : cd === 'aspd' ? L.cdAspd : `${cd} ${L.sec}`;
     return `<article class="skc g-${g}" style="--c:${c.color}">
-      <header>${H.skillIcon(s)}<div class="skc-t"><b>${esc(s.name)}</b>
+      <header>${H.skillIcon(s)}<div class="skc-t"><b translate="no">${esc(s.name)}</b>
         <span class="chips"><i class="ch k">${L.kind[k] || ''}</i>${el ? `<i class="ch el">${img(el, 'gi xs')}${L.el[el]}</i>` : ''}<i class="ch lv">${L.unlock} Lv.${s.unlock || 1}</i></span></div>
         ${k !== 'p' ? `<div class="skc-n">${cdTxt ? `<span><em>${L.cd}</em>${cdTxt}</span>` : ''}${sp ? `<span><em>${L.sp}</em>${sp}</span>` : ''}</div>` : ''}</header>
       <div class="skc-b"><h4>${L.what}</h4><p>${esc(t[li] || '')}</p></div>
@@ -103,12 +103,12 @@ function render(ctx){
     <div class="hub-head"><h1 class="stroke">${L.title}</h1><p>${L.sub}</p></div>
     <nav class="gtabs"><a href="#guide">${L.tabSys}</a><a class="on" href="#skills" aria-current="page">${L.tabSkills}</a><a href="#play">${L.tabPlay}</a></nav>
     <div class="sb-tools">${langPicker(L.other, L.otherNote)}</div>
-    <nav class="sb-cls" aria-label="${L.title}">${cls.map(x => `<a href="#skills-${x.id}" class="${x.id === c.id ? 'on' : ''}" style="--c:${x.color}" data-cls="${x.id}"><img src="assets/cls/${x.id}.webp" alt="" loading="lazy"><span>${esc(x.name)}</span></a>`).join('')}</nav>
+    <nav class="sb-cls" aria-label="${L.title}">${cls.map(x => `<a href="#skills-${x.id}" class="${x.id === c.id ? 'on' : ''}" style="--c:${x.color}" data-cls="${x.id}"><img src="assets/cls/${x.id}.webp" alt="" loading="lazy"><span translate="no">${esc(x.name)}</span></a>`).join('')}</nav>
     <section class="sb-head" style="--c:${c.color}">
       <img class="sb-emb" src="assets/cls/${c.id}.webp" alt="">
-      <div class="sb-info"><h2 class="stroke">${esc(c.name)}</h2><p>${L.role[c.id] || ''}</p>
+      <div class="sb-info"><h2 class="stroke" translate="no">${esc(c.name)}</h2><p>${L.role[c.id] || ''}</p>
         <div class="sb-meta"><span><em>${L.weapon}</em>${(WPN[lang] || WPN.en)[c.weapon] || c.weapon}</span>
-          <span><em>${L.main}</em>${(PRI[c.id] || []).map(k => `<i class="sdot cs" style="--sc:${SC[k]}">${k}</i>`).join('')}</span>
+          <span><em>${L.main}</em>${(PRI[c.id] || []).map(k => `<i translate="no" class="sdot cs" style="--sc:${SC[k]}">${k}</i>`).join('')}</span>
           ${c.special ? `<span class="spc">${L.special}</span>` : ''}</div></div>
       <div class="sb-f" role="group">${['all','active','buff','passive'].map(f => `<button type="button" data-f="${f}" class="${ST.f === f ? 'on' : ''}">${L[f]}</button>`).join('')}</div>
     </section>

@@ -167,7 +167,9 @@ const newId = () => (window.crypto && crypto.randomUUID) ? crypto.randomUUID() :
 const clone = o => JSON.parse(JSON.stringify(o));
 const avg = b => b.rating_count ? b.rating_sum / b.rating_count : 0;
 const thOK = (() => { try { return /^th/i.test(navigator.language || '') && Intl.DateTimeFormat().resolvedOptions().timeZone === 'Asia/Bangkok'; } catch (e) { return false; } })();
-let lang = thOK ? store.get('ht_lang', 'th') : 'en';
+// opened through Google Translate: always serve the English page so the translation starts from clean English
+const viaTranslate = /\.translate\.goog$/.test(location.hostname) || /[?&]_x_tr_tl=/.test(location.search);
+let lang = viaTranslate ? 'en' : thOK ? store.get('ht_lang', 'th') : 'en';
 const t = k => (I18N[lang] && I18N[lang][k]) || I18N.en[k] || k;
 const isTouch = () => !!(window.matchMedia && matchMedia('(hover: none)').matches);
 const HEART = '<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-7.5-4.6-9.6-9.2C.9 8.4 3 4.5 6.8 4.5c2.1 0 3.6 1.2 5.2 3 1.6-1.8 3.1-3 5.2-3 3.8 0 5.9 3.9 4.4 7.3C19.5 16.4 12 21 12 21z"/></svg>';
@@ -975,7 +977,7 @@ document.addEventListener('click', async e => {
 function applyI18n(){
   document.documentElement.lang = lang;
   $$('[data-i18n]').forEach(el => { el.textContent = t(el.dataset.i18n); });
-  const lb = $('#langBtn'); lb.hidden = !thOK; lb.textContent = lang === 'th' ? 'EN' : 'ไทย';
+  const lb = $('#langBtn'); lb.hidden = !thOK || viaTranslate; lb.textContent = lang === 'th' ? 'EN' : 'ไทย';
   const fl = $('#footLang');
   if (fl && window.HT_SKILLS) { fl.innerHTML = window.HT_SKILLS.langPicker(lang === 'th' ? 'อ่านเว็บนี้เป็นภาษาอื่น' : 'Read this site in another language', ''); window.HT_SKILLS.wireLangPicker(fl); }
 }
