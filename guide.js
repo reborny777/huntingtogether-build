@@ -1,6 +1,6 @@
 // Hunting Together Build Board — Hunter's Guide (beginner guide to the game's systems).
 // Every number here comes from the game's own code (StatFormulas, ElementData, SkillData.Statuses,
-// GearUtil refine table, loading-screen tips). Icons in assets/icons are captured from the game's UI atlas.
+// GearData refine table, GameConfig). Icons in assets/icons are captured from the game's UI atlas.
 (function(){
 'use strict';
 const ALIAS = {CRIT:'STR', CastSpeed:'MATK', HpRegen:'VIT', Speed:'FLEE'};   // the game draws these with the same atlas cell
@@ -16,14 +16,12 @@ const W = {
 en: {
   title: "Hunter's Guide",
   sub: 'Everything a new hunter needs: stats, elements, gear, cards, skills and the little tricks, with the icons you see in the game.',
-  nav: {stats:'Stats', elements:'Elements', gear:'Gear', cards:'Cards', skills:'Skills', classes:'Classes', status:'Status', tips:'Tips'},
+  nav: {stats:'Stats', elements:'Elements', gear:'Gear', cards:'Cards', skills:'Skills', classes:'Classes', status:'Status', },
   inShort: 'In short',
   tryIt: 'Try it in the builder',
   formulas: 'Exact formulas (for theory-crafters)',
   // stats
   stLead: 'Every level gives you stat points. Spend them on 6 base stats — each one can go up to 99.',
-  stShort: 'Pick 2–3 stats that fit your class and push them. You can never max everything.',
-  stArrow: 'A flashing <b>yellow arrow</b> over your head means you have points to spend. Tap it.',
   base: {
     STR:['Strength','Melee ATK for swords, knives, katanas, hammers and fists.'],
     AGI:['Agility','Attack speed (ASPD) and dodge (FLEE). Speeds attacks 4× more than DEX does.'],
@@ -71,7 +69,6 @@ en: {
   ],
   maxOne: 'Raising one stat from 1 to 99 costs <b>{n}</b> points — Lv.99 gives you <b>{t}</b> in total.',
   locked: 'Locked', rerolled: 'Rerolled', kept: 'Never changes',
-  autoUp: '<b>Auto Upgrade</b> spends points for you and starts on. Turn it off if you want to plan your own build.',
   // elements
   elLead: 'Monsters and attacks can have one of 4 elements. Hit a monster with the element that beats it.',
   elShort: 'Wind beats Water, Water beats Fire, Fire beats Earth, Earth beats Wind.',
@@ -93,7 +90,6 @@ en: {
     lava:['Lava','Fire + Earth','Burns the target for 5 s (−1.5% HP per second) and cuts its ATK/MATK by 25%.'],
   },
   noCombo: 'Earth + Water and Earth + Wind make no combo.',
-  partyEl: 'Party with friends who use other elements — one sets the aura, the other pops the combo.',
   // gear
   gLead: 'You wear 8 pieces of gear: a weapon, 5 armor pieces and 2 rings.',
   gShort: 'Higher tier = stronger, but needs a higher level. Weapons and rings give ATK/MATK; armor gives DEF.',
@@ -137,7 +133,6 @@ en: {
   // skills
   sLead: 'Every level gives 1 skill point, up to 70 points at Lv.70. Each skill goes up to Lv.10.',
   sShort: '70 points = 7 skills at max. New skills unlock as you level up.',
-  sArrow: 'A <b>blue arrow</b> means you have skill points to spend. Don\'t forget them!',
   sFacts: [
     ['Skill bar','8 skill slots on your skill bar (keys 1–8).'],
     ['AoE size','Area skills grow from 55% size at Lv.1 to 100% at Lv.10.'],
@@ -149,7 +144,6 @@ en: {
   xNo: 'These passives can\'t be borrowed:',
   // classes
   clLead: '10 classes, each with its own weapon and play style. Change class at the <b>Master Class</b> in the village center.',
-  clShort: 'Pick what feels fun. Every class can solo and every class is welcome in a party.',
   role: {
     Swordsman:'Tank with the most HP. Taunts monsters off friends.',
     Thief:'Fast crits that melt one target.',
@@ -182,22 +176,7 @@ en: {
     comboburn:['Combo Fire','Fire from an element combo: −1.5% HP per second for 5 s.'],
     lava:['Lava','From the Lava combo: monster ATK/MATK −25%.'],
   },
-  // tips
-  tLead: 'Small things that make a big difference.',
-  tips: [
-    ['auto','Auto Attack','Press <b>F</b> and your character fights on its own.'],
-    ['menu_quest','Auto walk','Tap the quest on screen and your character walks to the target.'],
-    ['arrow_stats','Yellow arrow','Stat points ready. Tap it to raise your stats.'],
-    ['arrow_skills','Blue arrow','Skill points ready. Don\'t forget them!'],
-    ['box_exp','Crystal shards','Grab the green crystal shards monsters drop to level up fast.'],
-    ['FLEE','Dash','Press Dash to roll away from a boss\'s big attacks.'],
-    ['menu_party','Party up','Invite friends. Hunting together is more fun — and combos are easier.'],
-    ['blacksmith','Blacksmith','Refine your gear. The higher the refine, the more it glows.'],
-    ['menu_job','Master Class','Change class at the Master Class in the village center.'],
-    ['merchant','Merchant','Bag full? Sell items at the Merchant in town (press H).'],
-    ['fire','Element badge','Check the badge above a monster and hit it with the element that beats it.'],
-    ['card','Boss cards','World Bosses always drop red cards — the rarest in the game.'],
-  ],
+
   endT: 'Ready to hunt?',
   endP: 'Plan your build with real gear, cards and skills — then share it with every hunter.',
   share: 'Make a build', play: 'Play on Roblox', top: 'Back to top',
@@ -205,13 +184,11 @@ en: {
 th: {
   title: 'คู่มือนักล่า',
   sub: 'ทุกอย่างที่นักล่ามือใหม่ต้องรู้ ทั้งค่าสเตตัส ธาตุ อุปกรณ์ การ์ด สกิล และลูกเล่นต่าง ๆ พร้อมไอคอนแบบเดียวกับในเกม',
-  nav: {stats:'สเตตัส', elements:'ธาตุ', gear:'อุปกรณ์', cards:'การ์ด', skills:'สกิล', classes:'อาชีพ', status:'สถานะ', tips:'ลูกเล่น'},
+  nav: {stats:'สเตตัส', elements:'ธาตุ', gear:'อุปกรณ์', cards:'การ์ด', skills:'สกิล', classes:'อาชีพ', status:'สถานะ', },
   inShort: 'สรุปสั้น ๆ',
   tryIt: 'ลองจัดในหน้าสร้างบิลด์',
   formulas: 'สูตรคำนวณจริง (สำหรับสายวิเคราะห์)',
   stLead: 'ทุกครั้งที่เลเวลอัปจะได้แต้มสเตตัส เอาไปอัปค่าหลัก 6 ตัว แต่ละตัวอัปได้สูงสุด 99',
-  stShort: 'เลือก 2–3 ค่าที่เข้ากับอาชีพแล้วอัปให้สุด เพราะอัปทุกตัวให้เต็มไม่ได้',
-  stArrow: 'เห็น<b>ลูกศรสีเหลือง</b>กะพริบเหนือหัว = มีแต้มสเตตัสรออยู่ กดเพื่ออัปได้เลย',
   base: {
     STR:['พลัง','ATK สายประชิด ดาบ มีด คาตานะ ค้อน และหมัด'],
     AGI:['ความว่องไว','ความเร็วโจมตี (ASPD) และการหลบ (FLEE) เพิ่มความเร็วได้มากกว่า DEX 4 เท่า'],
@@ -259,7 +236,6 @@ th: {
   ],
   maxOne: 'อัปค่าเดียวจาก 1 ถึง 99 ใช้ <b>{n}</b> แต้ม — ทั้งเกมได้แต้มรวม <b>{t}</b> แต้มที่ Lv.99',
   locked: 'ล็อกไว้', rerolled: 'สุ่มใหม่', kept: 'ไม่เปลี่ยน',
-  autoUp: '<b>อัปอัตโนมัติ (Auto Upgrade)</b> จะลงแต้มให้เองและเปิดไว้ตั้งแต่แรก ถ้าอยากวางบิลด์เองให้ปิดก่อน',
   elLead: 'มอนและการโจมตีมีธาตุได้ 1 ใน 4 ธาตุ ตีมอนด้วยธาตุที่ชนะทางจะแรงขึ้น',
   elShort: 'ลมชนะน้ำ น้ำชนะไฟ ไฟชนะดิน ดินชนะลม',
   el: {fire:'ไฟ', water:'น้ำ', wind:'ลม', earth:'ดิน'},
@@ -280,7 +256,6 @@ th: {
     lava:['ลาวา','ไฟ + ดิน','เผาเป้า 5 วินาที (HP −1.5% ต่อวินาที) และ ATK/MATK ของมอนลดลง 25%'],
   },
   noCombo: 'ดิน + น้ำ และ ดิน + ลม ไม่เกิดคอมโบ',
-  partyEl: 'จัดปาร์ตี้กับเพื่อนที่ใช้ธาตุต่างกัน คนหนึ่งแปะออร่า อีกคนจุดคอมโบ',
   gLead: 'ใส่อุปกรณ์ได้ 8 ชิ้น: อาวุธ 1 ชุดเกราะ 5 และแหวน 2',
   gShort: 'Tier ยิ่งสูงยิ่งแรง แต่ต้องใช้เลเวลสูงขึ้น อาวุธกับแหวนให้ ATK/MATK ส่วนเกราะให้ DEF',
   slots: {Helm:'หมวก', Weapon:'อาวุธ', Cloak:'ผ้าคลุม', Ring:'แหวน 1', Mask:'หน้ากาก', Armor:'เสื้อเกราะ', Boots:'รองเท้า', Ring2:'แหวน 2'},
@@ -321,7 +296,6 @@ th: {
   ],
   sLead: 'ทุกเลเวลได้ 1 แต้มสกิล สูงสุด 70 แต้มที่ Lv.70 แต่ละสกิลอัปได้ถึง Lv.10',
   sShort: '70 แต้ม = อัปสกิลเต็มได้ 7 สกิล สกิลใหม่ปลดล็อกตามเลเวล',
-  sArrow: 'เห็น<b>ลูกศรสีฟ้า</b> = มีแต้มสกิลรออยู่ อย่าลืมกดอัป!',
   sFacts: [
     ['แถบสกิล','ใส่สกิลในแถบได้ 8 ช่อง (ปุ่ม 1–8)'],
     ['ขนาดวงสกิล','สกิลวงกว้าง 55% ที่ Lv.1 และเต็ม 100% ที่ Lv.10'],
@@ -332,7 +306,6 @@ th: {
   xP: 'ตั้งแต่ Lv.70 ยืมสกิลพาสซีฟของ<b>อาชีพอื่น</b>ที่เราเคยเล่นจนถึง Lv.99 มาใช้ได้ ช่องใหม่เปิดที่เลเวลเหล่านี้:',
   xNo: 'พาสซีฟเหล่านี้ยืมไม่ได้:',
   clLead: '10 อาชีพ แต่ละอาชีพมีอาวุธและสไตล์ของตัวเอง เปลี่ยนอาชีพได้ที่ <b>Master Class</b> กลางหมู่บ้าน',
-  clShort: 'เลือกที่เล่นแล้วสนุก ทุกอาชีพเล่นคนเดียวได้ และเข้าปาร์ตี้ได้ทุกอาชีพ',
   role: {
     Swordsman:'แทงก์ HP เยอะสุด ยั่วมอนให้มาตีตัวเองแทนเพื่อน',
     Thief:'คริไวรัว ๆ ละลายเป้าเดี่ยว',
@@ -364,21 +337,6 @@ th: {
     comboburn:['ไฟคอมโบ','ไฟจากคอมโบธาตุ: HP −1.5% ต่อวินาที 5 วินาที'],
     lava:['ลาวา','จากคอมโบลาวา: ATK/MATK ของมอน −25%'],
   },
-  tLead: 'เรื่องเล็ก ๆ ที่ช่วยได้เยอะ',
-  tips: [
-    ['auto','โจมตีอัตโนมัติ','กด <b>F</b> ตัวละครจะสู้เอง'],
-    ['menu_quest','เดินอัตโนมัติ','กดเควสบนจอ ตัวละครจะเดินไปที่เป้าหมายเอง'],
-    ['arrow_stats','ลูกศรเหลือง','มีแต้มสเตตัส กดเพื่ออัปค่า'],
-    ['arrow_skills','ลูกศรฟ้า','มีแต้มสกิล อย่าลืมกดอัป!'],
-    ['box_exp','เศษคริสตัล','เก็บเศษคริสตัลสีเขียวที่มอนดรอป เลเวลอัปไว'],
-    ['FLEE','แดช','กดแดชเพื่อกลิ้งหลบท่าใหญ่ของบอส'],
-    ['menu_party','ตั้งปาร์ตี้','ชวนเพื่อนมาล่าด้วยกัน สนุกกว่า และจุดคอมโบง่ายกว่า'],
-    ['blacksmith','ช่างตีเหล็ก','ตีบวกอุปกรณ์ ยิ่งบวกสูงยิ่งเรืองแสง'],
-    ['menu_job','Master Class','เปลี่ยนอาชีพได้ที่ Master Class กลางหมู่บ้าน'],
-    ['merchant','พ่อค้า','กระเป๋าเต็ม? ขายของที่พ่อค้าในเมือง (กด H)'],
-    ['fire','ป้ายธาตุ','ดูป้ายเหนือหัวมอน แล้วตีด้วยธาตุที่ชนะทาง'],
-    ['card','การ์ดบอส','บอสโลกดรอปการ์ดสีแดงเสมอ หายากที่สุดในเกม'],
-  ],
   endT: 'พร้อมออกล่าแล้วหรือยัง',
   endP: 'วางแผนบิลด์ด้วยอุปกรณ์ การ์ด และสกิลจริงจากเกม แล้วแชร์ให้นักล่าทุกคนดู',
   share: 'สร้างบิลด์', play: 'เล่นบน Roblox', top: 'กลับขึ้นบน',
@@ -387,9 +345,8 @@ th: {
 // ---------- hub words ----------
 Object.assign(W.en, {
   hubSub: 'Tap a bubble around the hunter to learn that part of the game.',
-  quick: 'Quick tips',
   more: 'All the details', back: 'Back to the hunter', next: 'Next', prev: 'Back',
-  hint: {stats:'Where your points go', gear:'Weapon, armor, rings', refine:'Make gear stronger', cards:'Monster cards', elements:'Who beats who', skills:'Points & passives', classes:'10 classes', status:'Stun, burn, poison…', tips:'Small tricks'},
+  hint: {stats:'Where your points go', gear:'Weapon, armor, rings', refine:'Make gear stronger', cards:'Monster cards', elements:'Who beats who', skills:'Points & passives', classes:'10 classes', status:'Stun, burn, poison…', },
   keys: {
     stats: [['menu_stat','{pts} points by Lv.99','Every level gives stat points. Each stat goes up to 99.'],['STR','Cost rises every 10','+1 costs 2 points at first, then 1 more every 10 points — maxing one stat takes {one}.'],['ATK','Stats become power','STR / DEX → ATK · INT → MATK · VIT → HP · AGI → speed · LUK → crit.']],
     gear: [['menu_equip','8 slots','1 weapon, 5 armor pieces and 2 rings.'],['diamond','Color = tier','Grey → green → blue → purple → orange → red. Higher tier is stronger but needs a higher level.'],['swords','Read the lines','A main stat, random lines, and one special line from Tier II up.']],
@@ -403,9 +360,8 @@ Object.assign(W.en, {
 });
 Object.assign(W.th, {
   hubSub: 'กดบับเบิลรอบตัวนักล่า เพื่อดูว่าระบบนั้นในเกมทำงานยังไง',
-  quick: 'ลูกเล่นสั้น ๆ',
   more: 'ดูรายละเอียดทั้งหมด', back: 'กลับไปที่ตัวละคร', next: 'ถัดไป', prev: 'ก่อนหน้า',
-  hint: {stats:'แต้มลงตรงไหนดี', gear:'อาวุธ ชุด แหวน', refine:'ทำของให้แรงขึ้น', cards:'การ์ดมอนสเตอร์', elements:'ธาตุไหนชนะธาตุไหน', skills:'แต้มสกิลและพาสซีฟ', classes:'10 อาชีพ', status:'สตัน ไฟไหม้ พิษ…', tips:'ลูกเล่นเล็ก ๆ'},
+  hint: {stats:'แต้มลงตรงไหนดี', gear:'อาวุธ ชุด แหวน', refine:'ทำของให้แรงขึ้น', cards:'การ์ดมอนสเตอร์', elements:'ธาตุไหนชนะธาตุไหน', skills:'แต้มสกิลและพาสซีฟ', classes:'10 อาชีพ', status:'สตัน ไฟไหม้ พิษ…', },
   keys: {
     stats: [['menu_stat','{pts} แต้มที่ Lv.99','ทุกเลเวลได้แต้มสเตตัส แต่ละค่าอัปได้สูงสุด 99'],['STR','ยิ่งสูงยิ่งแพง','+1 ใช้ 2 แต้มตอนแรก แล้วเพิ่มอีก 1 ทุก 10 ค่า — อัปค่าเดียวจนเต็มใช้ {one} แต้ม'],['ATK','สเตตัสกลายเป็นพลัง','STR / DEX → ATK · INT → MATK · VIT → HP · AGI → ความเร็ว · LUK → คริ']],
     gear: [['menu_equip','8 ช่อง','อาวุธ 1 เกราะ 5 และแหวน 2'],['diamond','สี = Tier','เทา → เขียว → ฟ้า → ม่วง → ส้ม → แดง Tier สูงยิ่งแรง แต่ต้องเลเวลสูงขึ้น'],['swords','อ่านออปชัน','ค่าหลัก ออปชันสุ่ม และออปชันพิเศษ 1 บรรทัดตั้งแต่ Tier II']],
@@ -597,11 +553,9 @@ function build(ctx){
         <p>${L.role[c.id] || ''}</p>
         <div class="gcst">${top.map(k => dot(k, 'cs')).join('')}</div></article>`; }).join('')}</div>`, more:''};
 
-  // ---------- status + tips ----------
+  // ---------- status ----------
   T.status = {lead:L.stsLead,
     vis:`<div class="gsts">${Object.entries(L.sts).map(([k, [n, d]]) => `<div class="gs1">${img(k,'gi md')}<div><b>${n}</b><p>${d}</p></div></div>`).join('')}</div>`, more:''};
-  T.tips = {lead:L.tLead,
-    vis:`<div class="gtips">${L.tips.map(([ic, n, d]) => `<div class="gt1">${img(ic,'gi md')}<div><b>${n}</b><p>${d}</p></div></div>`).join('')}</div>`, more:''};
   return {T, L};
 }
 
