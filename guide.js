@@ -345,6 +345,7 @@ th: {
 // ---------- hub words ----------
 Object.assign(W.en, {
   hubSub: 'Tap a bubble around the hunter to learn that part of the game.',
+  tabSys: 'Game systems', tabPlay: 'Controls & tricks', playCta: 'Keyboard keys, mobile buttons and every Auto feature — PC and mobile.',
   more: 'All the details', back: 'Back to the hunter', next: 'Next', prev: 'Back',
   hint: {stats:'Where your points go', gear:'Weapon, armor, rings', refine:'Make gear stronger', cards:'Monster cards', elements:'Who beats who', skills:'Points & passives', classes:'10 classes', status:'Stun, burn, poison…', },
   keys: {
@@ -360,6 +361,7 @@ Object.assign(W.en, {
 });
 Object.assign(W.th, {
   hubSub: 'กดบับเบิลรอบตัวนักล่า เพื่อดูว่าระบบนั้นในเกมทำงานยังไง',
+  tabSys: 'ระบบในเกม', tabPlay: 'ปุ่มลัดและทริค', playCta: 'ปุ่มคีย์บอร์ด ปุ่มบนมือถือ และระบบออโต้ทุกอย่าง ทั้งคอมและมือถือ',
   more: 'ดูรายละเอียดทั้งหมด', back: 'กลับไปที่ตัวละคร', next: 'ถัดไป', prev: 'ก่อนหน้า',
   hint: {stats:'แต้มลงตรงไหนดี', gear:'อาวุธ ชุด แหวน', refine:'ทำของให้แรงขึ้น', cards:'การ์ดมอนสเตอร์', elements:'ธาตุไหนชนะธาตุไหน', skills:'แต้มสกิลและพาสซีฟ', classes:'10 อาชีพ', status:'สตัน ไฟไหม้ พิษ…', },
   keys: {
@@ -572,6 +574,7 @@ function render(ctx){
   app.innerHTML = `<div class="guide">
     <div class="hub">
       <div class="hub-head"><h1 class="stroke">${L.title}</h1><p>${L.hubSub}</p></div>
+      <nav class="gtabs"><a class="on" href="#guide" aria-current="page">${L.tabSys}</a><a href="#play">${L.tabPlay}</a></nav>
       <div class="hub-stage" id="hubStage">
         <svg class="hub-lines" id="hubLines" aria-hidden="true"></svg>
         <div class="hub-hero"><span class="hub-glow"></span><span class="hub-ground"></span><img id="hubHero" src="assets/hero.webp" alt="" width="493" height="630"></div>
@@ -579,6 +582,7 @@ function render(ctx){
         <div class="hub-col r">${side('r').map((t, i) => bubble(t, L, i + 4)).join('')}</div>
       </div>
     </div>
+    <a class="gplaycta" href="#play"><span class="gpc-i">${img('auto','gi lg')}</span><span class="gpc-t"><b class="stroke">${L.tabPlay}</b><i>${L.playCta}</i></span><span class="gpc-d"><i class="dv-pc"></i><i class="dv-mob"></i></span><em>→</em></a>
     <div id="gPanel" class="gpanel" hidden></div>
     <div class="gend"><img src="assets/logo.webp" alt="" loading="lazy"><div><h2 class="stroke">${L.endT}</h2><p>${L.endP}</p>
       <div class="hbtns"><a class="btn green" href="#new">${L.share}</a><a class="btn blue" href="${H.GAME_URL}" target="_blank" rel="noopener">${L.play}</a></div></div></div>
